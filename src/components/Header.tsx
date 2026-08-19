@@ -19,7 +19,8 @@ export function Header({
         <a href="#main" className="sr-only focus:not-sr-only focus:btn">
           Skip to content
         </a>
-        <div className="mr-auto flex items-baseline gap-2">
+        {/* The wordmark costs a phone header more than it earns — controls first. */}
+        <div className="hidden items-baseline gap-2 sm:mr-auto sm:flex">
           <span className="font-display text-lg font-semibold tracking-tight">PlateLoad</span>
           <span className="hidden text-xs text-muted lg:inline gym-hide">Load any weight. See every combination.</span>
         </div>
