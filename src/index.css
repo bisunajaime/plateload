@@ -15,6 +15,10 @@
     --steel: 150 155 162;
     --good: 21 128 61;
     --bad: 185 28 28;
+    /* Section accents — muted enough that plate colours stay the loudest thing */
+    --gold: 161 98 7;
+    --sky: 3 105 161;
+    --flame: 194 65 12;
 
     --plate-shadow: 0 0 0 / 0.22;
     --hilite: 255 255 255 / 0.55;
@@ -34,6 +38,9 @@
     --steel: 138 144 152;
     --good: 74 222 128;
     --bad: 248 113 113;
+    --gold: 250 204 21;
+    --sky: 56 189 248;
+    --flame: 251 146 60;
 
     --plate-shadow: 0 0 0 / 0.55;
     --hilite: 255 255 255 / 0.16;
@@ -74,6 +81,9 @@
   }
   .btn-primary {
     @apply border-transparent bg-ink text-bg hover:opacity-90;
+  }
+  .btn-danger {
+    @apply border-transparent bg-bad text-bg hover:opacity-90;
   }
   .btn-ghost {
     @apply border-transparent bg-transparent hover:bg-surface2;

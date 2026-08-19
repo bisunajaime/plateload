@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Unit } from '../data/plates'
 import { converted, fmt } from '../lib/format'
-import { MinusIcon, PlusIcon, Sheet } from './ui'
+import { MinusIcon, PlusIcon, SectionHeader, Sheet, TargetIcon } from './ui'
 
 export interface WeightInputProps {
   value: number
@@ -37,7 +37,9 @@ export function WeightInput({ value, unit, step, loadable, onChange, onCommit, q
   return (
     <section className="card p-4 sm:p-5" aria-label="Target weight">
       <div className="flex items-center justify-between gap-3">
-        <span className="label">Target</span>
+        <SectionHeader icon={<TargetIcon />} tone={loadable ? 'good' : 'bad'}>
+          Target
+        </SectionHeader>
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
             loadable ? 'bg-good/10 text-good' : 'bg-bad/10 text-bad'

@@ -6,7 +6,7 @@ import { Header } from './components/Header'
 import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
 import { WeightInput } from './components/WeightInput'
-import { CopyIcon, Sheet, StarIcon, TagIcon, XIcon, ZoomIcon } from './components/ui'
+import { ClockIcon, CopyIcon, ScaleIcon, SectionHeader, Sheet, StarIcon, TagIcon, XIcon, ZoomIcon } from './components/ui'
 import { COLLARS } from './data/plates'
 import { comboTotal, smallestIncrement, solve, type Combo } from './lib/combinations'
 import { fmt } from './lib/format'
@@ -19,6 +19,7 @@ export default function App() {
   const [setupOpen, setSetupOpen] = useState(false)
   const [favOpen, setFavOpen] = useState(false)
   const [favLabel, setFavLabel] = useState('')
+  const [removing, setRemoving] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [copied, setCopied] = useState(false)
@@ -102,20 +103,35 @@ export default function App() {
 
           {/* live breakdown */}
           <section className="card px-4 py-3" aria-label="Weight breakdown">
-            <p className="text-sm tabular-nums">
-              <span className="text-muted">Bar</span> {fmt(loadout.barWeight)}
-              <span className="text-muted"> + collars</span> {fmt(settings.collars ? loadout.collarWeight * 2 : 0)}
-              <span className="text-muted"> + plates</span>{' '}
-              <span className={result.ok ? '' : 'text-bad'}>{fmt(Math.max(0, result.platesTotal))}</span>
-              <span className="text-muted"> = </span>
-              <span className="font-semibold">
+            <SectionHeader icon={<ScaleIcon />} tone="steel">
+              Breakdown
+            </SectionHeader>
+
+            <dl className="mt-3 grid grid-cols-3 gap-2">
+              {[
+                { k: 'Bar', v: fmt(loadout.barWeight), tone: '' },
+                { k: 'Collars', v: fmt(settings.collars ? loadout.collarWeight * 2 : 0), tone: '' },
+                {
+                  k: 'Plates',
+                  v: fmt(Math.max(0, result.platesTotal)),
+                  tone: result.ok ? 'text-good' : 'text-bad',
+                },
+              ].map((cell) => (
+                <div key={cell.k} className="rounded-xl bg-surface2/70 px-2 py-2 text-center">
+                  <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">{cell.k}</dt>
+                  <dd className={`text-base font-semibold tabular-nums ${cell.tone}`}>{cell.v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-2.5 flex items-baseline justify-between border-t border-line pt-2.5">
+              <span className="text-xs text-muted">
+                {fmt(result.perSide > 0 ? result.perSide : 0)} {settings.unit} a side · steps of {fmt(step)}
+              </span>
+              <span className="text-sm font-semibold tabular-nums">
                 {fmt(settings.target)} {settings.unit}
               </span>
-            </p>
-            <p className="mt-1 text-xs text-muted tabular-nums">
-              {fmt(result.perSide > 0 ? result.perSide : 0)} {settings.unit} a side · smallest step here {fmt(step)}{' '}
-              {settings.unit}
-            </p>
+            </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
               {jumps.down != null && (
@@ -133,8 +149,8 @@ export default function App() {
                   ↑ {fmt(jumps.competitionUp)} comp
                 </button>
               )}
-              <button className="chip" onClick={addFavorite} title="Save as favourite">
-                <StarIcon />
+              <button className="chip text-gold" onClick={addFavorite} title="Save as favourite">
+                <StarIcon size={16} />
                 Save
               </button>
               <button className="chip" onClick={copy} title="Copy a summary">
@@ -145,45 +161,60 @@ export default function App() {
           </section>
 
           {favorites.length > 0 && (
-            <section className="card px-4 py-3" aria-label="Favourites">
-              <h2 className="label mb-2">Favourites</h2>
-              <ul className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {favorites.map((f) => (
-                  <li
-                    key={`${f.index}`}
-                    className="inline-flex shrink-0 items-center rounded-full border border-line bg-surface"
-                  >
-                    <button
-                      type="button"
-                      className="min-h-[40px] rounded-l-full px-3.5 text-sm font-medium transition hover:bg-surface2 active:scale-95"
-                      onClick={() => pickWeight(f.weight, f.unit)}
-                      title={f.unit === settings.unit ? undefined : `Switches to ${f.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
-                    >
-                      {f.label && <span className="font-semibold">{f.label}</span>}
-                      <span className={`tabular-nums ${f.label ? 'ml-1.5 text-muted' : 'font-semibold'}`}>
-                        {fmt(f.weight)} {f.unit}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="min-h-[40px] rounded-r-full border-l border-line px-2.5 text-muted transition hover:bg-surface2 hover:text-bad"
-                      onClick={() =>
-                        update({ favorites: settings.favorites.filter((_, i) => i !== f.index) })
-                      }
-                      aria-label={`Remove favourite ${f.label || fmt(f.weight)} — ${fmt(f.weight)} ${f.unit}`}
-                      title="Remove"
-                    >
-                      <XIcon />
-                    </button>
-                  </li>
-                ))}
+            <section className="card overflow-hidden" aria-label="Favourites">
+              <SectionHeader
+                icon={<StarIcon size={16} filled />}
+                tone="gold"
+                className="px-4 pb-2.5 pt-3"
+                right={<span className="text-xs text-muted tabular-nums">{favorites.length} saved</span>}
+              >
+                Favourites
+              </SectionHeader>
+              <ul className="max-h-64 divide-y divide-line overflow-y-auto border-t border-line">
+                {favorites.map((f) => {
+                  const foreign = f.unit !== settings.unit
+                  return (
+                    <li key={f.index} className="flex items-stretch">
+                      <button
+                        type="button"
+                        className="flex min-h-[52px] flex-1 items-center gap-3 px-4 text-left transition hover:bg-surface2"
+                        onClick={() => pickWeight(f.weight, f.unit)}
+                        title={foreign ? `Switches to ${f.unit === 'lb' ? 'Metcon' : 'Eleiko'}` : undefined}
+                      >
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                          {f.label || <span className="text-muted">Unnamed</span>}
+                        </span>
+                        <span className="shrink-0 text-sm tabular-nums">
+                          <span className="font-semibold">{fmt(f.weight)}</span>{' '}
+                          <span className={foreign ? 'text-ink' : 'text-muted'}>{f.unit}</span>
+                        </span>
+                        {foreign && (
+                          <span className="shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            {f.unit === 'lb' ? 'Metcon' : 'Eleiko'}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-h-[52px] w-12 shrink-0 items-center justify-center border-l border-line text-muted transition hover:bg-surface2 hover:text-bad"
+                        onClick={() => setRemoving(f.index)}
+                        aria-label={`Remove favourite ${f.label || 'unnamed'} — ${fmt(f.weight)} ${f.unit}`}
+                        title="Remove"
+                      >
+                        <XIcon />
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </section>
           )}
 
           {settings.lastWeights.length > 0 && (
             <section className="card px-4 py-3" aria-label="Recent weights">
-              <h2 className="label mb-2">Recent</h2>
+              <SectionHeader icon={<ClockIcon />} tone="sky" className="mb-2.5">
+                Recent
+              </SectionHeader>
               <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                 {settings.lastWeights.map((r) => (
                   <button
@@ -310,6 +341,41 @@ export default function App() {
         }}
       />
 
+
+      <Sheet
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        title="Remove favourite?"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost" onClick={() => setRemoving(null)}>
+              Keep it
+            </button>
+            <button
+              className="btn btn-danger px-5"
+              onClick={() => {
+                update({ favorites: settings.favorites.filter((_, i) => i !== removing) })
+                setRemoving(null)
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        }
+      >
+        {removing !== null && settings.favorites[removing] && (
+          <p className="text-sm text-muted">
+            <span className="font-semibold text-ink">
+              {settings.favorites[removing].label || 'Unnamed'}
+            </span>{' '}
+            —{' '}
+            <span className="tabular-nums text-ink">
+              {fmt(settings.favorites[removing].weight)} {settings.favorites[removing].unit}
+            </span>{' '}
+            will be removed from your favourites. Nothing else changes.
+          </p>
+        )}
+      </Sheet>
 
       <Sheet
         open={favOpen}

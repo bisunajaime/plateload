@@ -163,6 +163,44 @@ export function Sheet({
   )
 }
 
+/* ---------------------------------------------------------- section header */
+
+export type Tone = 'good' | 'bad' | 'gold' | 'sky' | 'flame' | 'steel'
+
+const TONE: Record<Tone, string> = {
+  good: 'bg-good/15 text-good',
+  bad: 'bg-bad/15 text-bad',
+  gold: 'bg-gold/15 text-gold',
+  sky: 'bg-sky/15 text-sky',
+  flame: 'bg-flame/15 text-flame',
+  steel: 'bg-steel/15 text-steel',
+}
+
+/** A tinted icon plus a label — the anchor that tells the left-hand cards apart. */
+export function SectionHeader({
+  icon,
+  tone,
+  children,
+  right,
+  className = '',
+}: {
+  icon: ReactNode
+  tone: Tone
+  children: ReactNode
+  right?: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={`flex items-center gap-2.5 ${className}`}>
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${TONE[tone]}`} aria-hidden="true">
+        {icon}
+      </span>
+      <h2 className="label">{children}</h2>
+      {right && <span className="ml-auto shrink-0">{right}</span>}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------- icons */
 
 const ico = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -191,8 +229,17 @@ export const PlusIcon = () => (
 export const MinusIcon = () => (
   <svg {...ico} aria-hidden="true"><path d="M5 12h14" /></svg>
 )
-export const StarIcon = ({ filled = false }: { filled?: boolean }) => (
-  <svg {...ico} fill={filled ? 'currentColor' : 'none'} aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9Z" /></svg>
+export const StarIcon = ({ filled = false, size = 20 }: { filled?: boolean; size?: number }) => (
+  <svg {...ico} width={size} height={size} fill={filled ? 'currentColor' : 'none'} aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9Z" /></svg>
+)
+export const ClockIcon = () => (
+  <svg {...ico} width={16} height={16} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+)
+export const ScaleIcon = () => (
+  <svg {...ico} width={16} height={16} aria-hidden="true"><path d="M12 4v16M7 20h10" /><path d="M5 9h14" /><path d="m5 9-2.5 5a3 3 0 0 0 5 0Z" /><path d="m19 9-2.5 5a3 3 0 0 0 5 0Z" /></svg>
+)
+export const TargetIcon = () => (
+  <svg {...ico} width={16} height={16} aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg>
 )
 export const CopyIcon = () => (
   <svg {...ico} aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
@@ -203,6 +250,6 @@ export const ZoomIcon = () => (
 export const TagIcon = () => (
   <svg {...ico} aria-hidden="true"><path d="M3 11V4a1 1 0 0 1 1-1h7l9 9-8 8Z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" /></svg>
 )
-export const FlameIcon = () => (
-  <svg {...ico} aria-hidden="true"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-1.7.8-3 1.6-4.1.4 1 1.2 1.6 2 1.6 1.4 0 1.6-2.4 1.4-6.5Z" /></svg>
+export const FlameIcon = ({ size = 20 }: { size?: number }) => (
+  <svg {...ico} width={size} height={size} aria-hidden="true"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-1.7.8-3 1.6-4.1.4 1 1.2 1.6 2 1.6 1.4 0 1.6-2.4 1.4-6.5Z" /></svg>
 )

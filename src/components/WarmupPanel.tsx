@@ -3,7 +3,7 @@ import type { Unit } from '../data/plates'
 import type { SolveInput } from '../lib/combinations'
 import { convert, fmt } from '../lib/format'
 import { DEFAULT_RAMP, percentTable, warmupPlan } from '../lib/warmup'
-import { Segmented } from './ui'
+import { FlameIcon, SectionHeader, Segmented } from './ui'
 
 type Tab = 'warmup' | 'percent' | 'convert'
 
@@ -29,6 +29,9 @@ export function WarmupPanel({
 
   return (
     <section className="card p-4" aria-label="Training tools">
+      <SectionHeader icon={<FlameIcon size={16} />} tone="flame" className="mb-3">
+        Training tools
+      </SectionHeader>
       <div className="hide-scroll -mx-1 overflow-x-auto px-1 pb-2">
         <Segmented
           value={tab}

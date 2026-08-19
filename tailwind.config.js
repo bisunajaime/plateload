@@ -15,6 +15,9 @@ export default {
         steel: 'rgb(var(--steel) / <alpha-value>)',
         good: 'rgb(var(--good) / <alpha-value>)',
         bad: 'rgb(var(--bad) / <alpha-value>)',
+        gold: 'rgb(var(--gold) / <alpha-value>)',
+        sky: 'rgb(var(--sky) / <alpha-value>)',
+        flame: 'rgb(var(--flame) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter var', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'],
