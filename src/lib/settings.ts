@@ -75,7 +75,7 @@ export function defaultSettings(): Settings {
       ...defaultInventory('metcon', 'lb'),
     },
     gymMode: false,
-    showLabels: true,
+    showLabels: false,
     closeUp: false,
     target: 100,
     mode: 'recommended',

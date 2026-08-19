@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { BarbellSVG } from './components/BarbellSVG'
 import { ComboList } from './components/ComboList'
 import { EmptyState } from './components/EmptyState'
 import { Header } from './components/Header'
+import { MiniBar } from './components/MiniBar'
 import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
 import { WeightInput } from './components/WeightInput'
@@ -12,6 +13,7 @@ import { comboTotal, smallestIncrement, solve, type Combo } from './lib/combinat
 import { fmt } from './lib/format'
 import { buildSolveInput, resolveLoadout } from './lib/settings'
 import { nextJump } from './lib/warmup'
+import { useVisibility } from './hooks/useOnScreen'
 import { prefersReducedMotion, useSettings } from './hooks/useSettings'
 
 export default function App() {
@@ -91,6 +93,12 @@ export default function App() {
   }
 
   const animate = !prefersReducedMotion()
+
+  // Once you have scrolled past the hero, a thumbnail of the load follows you
+  // down the page. Only after passing it — floating a copy over a bar you have
+  // not reached yet would just cover the controls.
+  const heroRef = useRef<HTMLElement>(null)
+  const hero = useVisibility(heroRef)
 
   return (
     <div className="min-h-dvh">
@@ -244,7 +252,11 @@ export default function App() {
         {/* ------------------------------------------------------ hero + list */}
         {/* On a phone this drops below the tools; on desktop it is the right-hand column. */}
         <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <section className="card platform-grain overflow-hidden" aria-label="Loaded barbell">
+          <section
+            ref={heroRef}
+            className="card platform-grain scroll-mt-20 overflow-hidden"
+            aria-label="Loaded barbell"
+          >
             <div className="hide-scroll overflow-x-auto">
               <BarbellSVG
                 bar={loadout.bar}
@@ -360,6 +372,20 @@ export default function App() {
           </footer>
         </div>
       </main>
+
+      <MiniBar
+        show={hero.passed && !hero.onScreen}
+        bar={loadout.bar}
+        plates={loadout.plates}
+        combo={selected}
+        collarKind={collarKind}
+        collarWidthMm={collarWidth}
+        unit={settings.unit}
+        total={settings.target}
+        onClick={() =>
+          heroRef.current?.scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'start' })
+        }
+      />
 
       <SettingsSheet
         open={setupOpen}
