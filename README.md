@@ -201,6 +201,8 @@ stack overruns the loadable sleeve (415 mm on a men's bar). Metcon 25 kg + 20 kg
 - Hero SVG barbell: knurling, marking rings, collars, mirrored plates, ground shadow,
   plates sliding on with a stagger (respects `prefers-reduced-motion`)
 - Sleeve close-up, plate labels and a running total
+- A floating load preview when the bar is off screen: drag it anywhere, it snaps to the nearest
+  edge like AssistiveTouch and remembers where you left it; tap it to jump back to the bar
 - Combination cards with a sleeve thumbnail, plate list, count, capacity bar and badges
 - Warm-up generator, % of 1RM table, next-jump and next-competition-increment chips
 - Favourites and recents in their own sections. The star always saves, so two lifts can share a

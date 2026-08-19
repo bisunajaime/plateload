@@ -381,6 +381,9 @@ export default function App() {
         collarWidthMm={collarWidth}
         unit={settings.unit}
         total={settings.target}
+        pos={settings.preview}
+        onMove={(preview) => update({ preview })}
+        animate={animate}
         onClick={() =>
           heroRef.current?.scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'start' })
         }

@@ -16,6 +16,12 @@ import {
 import { denomsFromPlates, snapToLoadable, type Denom, type RankMode, type SolveInput } from './combinations'
 import { convert } from './format'
 
+/** Where the floating load preview parks: which edge, and how far down (0–1). */
+export interface PreviewPos {
+  side: 'left' | 'right'
+  y: number
+}
+
 export interface Favorite {
   label: string
   weight: number
@@ -44,6 +50,7 @@ export interface Settings {
   /** Whole-gym counts keyed by plate id, across every brand/unit. */
   inventory: Record<string, number>
   gymMode: boolean
+  preview: PreviewPos
   showLabels: boolean
   closeUp: boolean
   target: number
@@ -75,6 +82,7 @@ export function defaultSettings(): Settings {
       ...defaultInventory('metcon', 'lb'),
     },
     gymMode: false,
+    preview: { side: 'right', y: 0.08 },
     showLabels: false,
     closeUp: false,
     target: 100,
@@ -96,6 +104,11 @@ export function hydrate(raw: unknown): Settings {
     favorites: Array.isArray(s.favorites) ? s.favorites.filter((f) => f && typeof f.weight === 'number') : [],
     lastWeights: hydrateRecents(s.lastWeights, (s.unit as Unit) ?? base.unit),
   }
+  const pos = s.preview
+  merged.preview =
+    pos && (pos.side === 'left' || pos.side === 'right') && typeof pos.y === 'number' && pos.y >= 0 && pos.y <= 1
+      ? { side: pos.side, y: pos.y }
+      : base.preview
   if (!BARS.some((b) => b.id === merged.barId)) merged.barId = defaultBarId(merged.brand, merged.unit)
   if (!Number.isFinite(merged.target) || merged.target <= 0) merged.target = base.target
   // Old stores (and hand-edited ones) may hold a unit the brand does not use.
