@@ -1,0 +1,142 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BARS, type Brand } from '../data/plates'
+import type { RankMode } from '../lib/combinations'
+import { STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
+
+/* ------------------------------------------------------------------- URL sync */
+
+function readUrl(base: Settings): Settings {
+  if (typeof window === 'undefined') return base
+  const q = new URLSearchParams(window.location.search)
+  if ([...q.keys()].length === 0) return base
+  let s = { ...base }
+  // The brand carries the unit, so `brand` wins and a bare `u` implies a brand.
+  const brand = q.get('brand')
+  const unit = q.get('u')
+  if (brand === 'eleiko' || brand === 'metcon') {
+    s = applyBrand(s, brand as Brand)
+  } else if (unit === 'kg' || unit === 'lb') {
+    s = applyBrand(s, brandForUnit(unit))
+  }
+  const w = Number(q.get('w'))
+  if (Number.isFinite(w) && w > 0) s.target = w
+  const bar = q.get('bar')
+  if (bar && BARS.some((b) => b.id === bar)) s.barId = bar
+  else if (bar && Number.isFinite(Number(bar))) {
+    s.barId = 'custom'
+    s.customBarWeight = Number(bar)
+  }
+  const collars = q.get('collars')
+  if (collars != null) s.collars = collars === '1' || collars === 'true'
+  const mode = q.get('mode')
+  if (mode) s.mode = mode as RankMode
+  const sleeveView = q.get('sleeve')
+  if (sleeveView != null) s.closeUp = sleeveView === '1'
+  const change = q.get('change')
+  if (change != null) s.includeChange = change === '1'
+  return s
+}
+
+function writeUrl(s: Settings) {
+  if (typeof window === 'undefined') return
+  const q = new URLSearchParams()
+  q.set('w', String(s.target))
+  q.set('u', s.unit)
+  q.set('brand', s.brand)
+  q.set('bar', s.barId === 'custom' && s.customBarWeight ? String(s.customBarWeight) : s.barId)
+  q.set('collars', s.collars ? '1' : '0')
+  if (!s.includeChange) q.set('change', '0')
+  const next = `${window.location.pathname}?${q.toString()}`
+  window.history.replaceState(null, '', next)
+}
+
+/* --------------------------------------------------------------------- hook */
+
+export function useSettings() {
+  const [settings, setSettings] = useState<Settings>(() => {
+    let base = defaultSettings()
+    let stored = false
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        base = hydrate(JSON.parse(raw))
+        stored = true
+      }
+    } catch {
+      /* corrupted storage — fall back to defaults */
+    }
+    if (!stored) {
+      // A phone in a dark gym is the default case: start in gym mode there.
+      const smallAndDark =
+        window.innerWidth < 640 && window.matchMedia('(prefers-color-scheme: dark)').matches
+      base = { ...base, gymMode: smallAndDark }
+    }
+    return readUrl(base)
+  })
+
+  // Persist, debounced enough to survive a stepper being hammered.
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+      } catch {
+        /* private mode / quota — the app still works, it just forgets */
+      }
+      writeUrl(settings)
+    }, 250)
+    return () => window.clearTimeout(timer.current)
+  }, [settings])
+
+  // Theme
+  useEffect(() => {
+    const root = document.documentElement
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const dark = settings.theme === 'dark' || (settings.theme === 'system' && mql.matches)
+      root.classList.toggle('dark', dark)
+      const meta = document.querySelector('meta[name="theme-color"]')
+      if (meta) meta.setAttribute('content', dark ? '#0c0c0d' : '#f4f2ee')
+    }
+    apply()
+    mql.addEventListener('change', apply)
+    return () => mql.removeEventListener('change', apply)
+  }, [settings.theme])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('gym-mode', settings.gymMode)
+  }, [settings.gymMode])
+
+  const update = useCallback((patch: Partial<Settings> | ((s: Settings) => Partial<Settings>)) => {
+    setSettings((prev) => ({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) }))
+  }, [])
+
+  const setBrand = useCallback((brand: Brand) => {
+    setSettings((prev) => applyBrand(prev, brand))
+  }, [])
+
+  const setTarget = useCallback((target: number) => {
+    setSettings((prev) => ({ ...prev, target: Math.max(0, Math.round(target * 1000) / 1000) }))
+  }, [])
+
+  /** Push a weight onto the recents list (deduped, most recent first). */
+  const rememberWeight = useCallback((w: number) => {
+    setSettings((prev) => {
+      const list = [w, ...prev.lastWeights.filter((x) => x !== w)].slice(0, 15)
+      return { ...prev, lastWeights: list }
+    })
+  }, [])
+
+  const reset = useCallback(() => setSettings(defaultSettings()), [])
+
+  const isDark = useMemo(
+    () => settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches),
+    [settings.theme],
+  )
+
+  return { settings, update, setBrand, setTarget, rememberWeight, reset, isDark }
+}
+
+export const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches

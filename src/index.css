@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light — warm paper / charcoal */
+    --bg: 244 242 238;
+    --surface: 255 254 252;
+    --surface-2: 236 233 227;
+    --line: 214 209 200;
+    --ink: 26 26 28;
+    --muted: 104 101 96;
+    --accent: 24 24 27;
+    --steel: 150 155 162;
+    --good: 21 128 61;
+    --bad: 185 28 28;
+
+    --plate-shadow: 0 0 0 / 0.22;
+    --hilite: 255 255 255 / 0.55;
+    --grain: 0.035;
+    color-scheme: light;
+  }
+
+  .dark {
+    /* Dark — near black / warm off-white */
+    --bg: 12 12 13;
+    --surface: 22 22 24;
+    --surface-2: 32 32 35;
+    --line: 55 55 60;
+    --ink: 244 241 235;
+    --muted: 150 147 141;
+    --accent: 240 237 231;
+    --steel: 138 144 152;
+    --good: 74 222 128;
+    --bad: 248 113 113;
+
+    --plate-shadow: 0 0 0 / 0.55;
+    --hilite: 255 255 255 / 0.16;
+    --grain: 0.05;
+    color-scheme: dark;
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    font-variant-numeric: tabular-nums lining-nums;
+    overscroll-behavior-y: none;
+  }
+
+  /* Weights, counts, everything numeric */
+  .tnum { font-variant-numeric: tabular-nums lining-nums; }
+
+  :where(button, a, input, select, [tabindex]):focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: rgb(var(--ink) / 0.85);
+    --tw-ring-offset-color: rgb(var(--bg));
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type='number'] { -moz-appearance: textfield; }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line
+           bg-surface px-4 text-sm font-medium text-ink transition
+           hover:bg-surface2 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100;
+  }
+  .btn-primary {
+    @apply border-transparent bg-ink text-bg hover:opacity-90;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent hover:bg-surface2;
+  }
+  .seg {
+    @apply inline-flex rounded-xl border border-line bg-surface p-1;
+  }
+  .seg > button {
+    @apply min-h-[36px] rounded-lg px-3 text-sm font-medium text-muted transition;
+  }
+  .seg > button[aria-pressed='true'], .seg > button[aria-selected='true'] {
+    @apply bg-surface2 text-ink;
+  }
+  .chip {
+    @apply inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border border-line
+           bg-surface px-3.5 text-sm font-medium text-ink transition hover:bg-surface2 active:scale-95;
+  }
+  .label { @apply text-xs font-medium uppercase tracking-[0.14em] text-muted; }
+  .hide-scroll::-webkit-scrollbar { display: none; }
+  .hide-scroll { scrollbar-width: none; }
+}
+
+/* Platform texture behind the hero bar — restrained */
+.platform-grain {
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, rgb(var(--ink) / 0.06), transparent 65%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-blend-mode: overlay;
+}
+.platform-grain::after { content: ''; }
+
+/* Gym mode: bigger type, more contrast, less chrome */
+.gym-mode { font-size: 112.5%; --muted: var(--ink); }
+.gym-mode .gym-hide { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Plates sliding onto the sleeve */
+@keyframes plate-on {
+  from { transform: translateX(var(--slide, 120px)); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.plate-anim { animation: plate-on 340ms cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.fade-up { animation: fade-up 220ms ease-out both; }
