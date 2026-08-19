@@ -26,6 +26,8 @@ export function WarmupPanel({
   const plan = useMemo(() => warmupPlan(target, input, ramp), [target, input, ramp])
   const rows = useMemo(() => percentTable(oneRm, input, 50, 100, step), [oneRm, input, step])
   const other: Unit = unit === 'kg' ? 'lb' : 'kg'
+  /** Marks whichever rows already match what is on the bar. */
+  const isLoaded = (w: number) => Math.abs(w - target) < 0.001
 
   return (
     <section className="card p-4" aria-label="Training tools">
@@ -52,15 +54,21 @@ export function WarmupPanel({
             Ramp to {fmt(target)} {unit}. Every step is snapped to what your gym can actually load.
           </p>
           <ul className="flex flex-col gap-2">
-            {plan.map((s) => (
+            {plan.map((s) => {
+              const loaded = isLoaded(s.weight)
+              return (
               <li key={s.key}>
                 <button
                   type="button"
-                  className="btn w-full justify-between px-4"
+                  aria-current={loaded ? 'true' : undefined}
+                  className={`btn w-full justify-between px-4 ${loaded ? 'border-transparent bg-good/10 ring-2 ring-good' : ''}`}
                   onClick={() => onPick(s.weight)}
                 >
                   <span className="flex items-center gap-3">
-                    <span className="w-12 text-left text-xs uppercase tracking-wider text-muted">{s.label}</span>
+                    <span className={`flex w-12 items-center gap-1.5 text-left text-xs uppercase tracking-wider ${loaded ? 'font-semibold text-good' : 'text-muted'}`}>
+                      {loaded && <span className="h-1.5 w-1.5 rounded-full bg-good" aria-hidden="true" />}
+                      {s.label}
+                    </span>
                     <span className="text-lg font-semibold tabular-nums">
                       {fmt(s.weight)} {unit}
                     </span>
@@ -70,7 +78,8 @@ export function WarmupPanel({
                   )}
                 </button>
               </li>
-            ))}
+              )
+            })}
           </ul>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
@@ -125,19 +134,33 @@ export function WarmupPanel({
             </label>
           </div>
           <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {rows.map((r) => (
-              <li key={r.pct}>
-                <button type="button" className="btn w-full flex-col items-start gap-0 py-2" onClick={() => onPick(r.weight)}>
-                  <span className="text-[11px] uppercase tracking-wider text-muted">{r.pct}%</span>
-                  <span className="text-base font-semibold tabular-nums">
-                    {fmt(r.weight)} {unit}
-                  </span>
-                  <span className="text-[11px] text-muted tabular-nums">
-                    {fmt(convert(r.weight, unit, other), 1)} {other}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {rows.map((r) => {
+              const loaded = isLoaded(r.weight)
+              return (
+                <li key={r.pct}>
+                  <button
+                    type="button"
+                    aria-current={loaded ? 'true' : undefined}
+                    className={`btn w-full flex-col items-start gap-0 py-2 ${
+                      loaded ? 'border-transparent bg-good/10 ring-2 ring-good' : ''
+                    }`}
+                    onClick={() => onPick(r.weight)}
+                  >
+                    <span className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider ${loaded ? 'font-semibold text-good' : 'text-muted'}`}>
+                      {loaded && <span className="h-1.5 w-1.5 rounded-full bg-good" aria-hidden="true" />}
+                      {r.pct}%
+                      {loaded && <span className="sr-only">— currently on the bar</span>}
+                    </span>
+                    <span className="text-base font-semibold tabular-nums">
+                      {fmt(r.weight)} {unit}
+                    </span>
+                    <span className={`text-[11px] tabular-nums ${loaded ? 'text-good' : 'text-muted'}`}>
+                      {fmt(convert(r.weight, unit, other), 1)} {other}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
