@@ -91,11 +91,19 @@ export function Sheet({
   const panel = useRef<HTMLDivElement>(null)
   const restore = useRef<HTMLElement | null>(null)
 
+  // Held in a ref so the effect below never re-runs just because the caller
+  // passed a fresh arrow function: tearing it down mid-typing would restore
+  // focus to whatever opened the sheet after every keystroke.
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  })
+
   useEffect(() => {
     if (!open) return
     restore.current = document.activeElement as HTMLElement
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') closeRef.current()
       if (e.key === 'Tab' && panel.current) {
         const nodes = panel.current.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
@@ -113,7 +121,13 @@ export function Sheet({
       }
     }
     document.addEventListener('keydown', onKey)
-    const t = window.setTimeout(() => panel.current?.querySelector<HTMLElement>('button, input, select')?.focus(), 30)
+    // Land on the first field if the sheet has one, otherwise the first control.
+    const t = window.setTimeout(() => {
+      const el =
+        panel.current?.querySelector<HTMLElement>('input:not([type="checkbox"]), select, textarea') ??
+        panel.current?.querySelector<HTMLElement>('button')
+      el?.focus()
+    }, 30)
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
@@ -121,7 +135,7 @@ export function Sheet({
       document.body.style.overflow = ''
       restore.current?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (
