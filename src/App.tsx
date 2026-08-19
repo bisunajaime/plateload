@@ -94,9 +94,8 @@ export default function App() {
 
   const animate = !prefersReducedMotion()
 
-  // Once you have scrolled past the hero, a thumbnail of the load follows you
-  // down the page. Only after passing it — floating a copy over a bar you have
-  // not reached yet would just cover the controls.
+  // Whenever the hero bar is off screen — above you or still below — a
+  // thumbnail of the load stands in for it.
   const heroRef = useRef<HTMLElement>(null)
   const hero = useVisibility(heroRef)
 
@@ -374,7 +373,7 @@ export default function App() {
       </main>
 
       <MiniBar
-        show={hero.passed && !hero.onScreen}
+        show={!hero.onScreen}
         bar={loadout.bar}
         plates={loadout.plates}
         combo={selected}

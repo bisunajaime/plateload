@@ -36,7 +36,8 @@ export function WeightInput({ value, unit, step, loadable, onChange, onCommit, q
 
   return (
     <section className="card p-4 sm:p-5" aria-label="Target weight">
-      <div className="flex items-center justify-between gap-3">
+      {/* Left-aligned: the floating load preview parks in the top right corner. */}
+      <div className="flex items-center gap-3">
         <SectionHeader icon={<TargetIcon />} tone={loadable ? 'good' : 'bad'}>
           Target
         </SectionHeader>

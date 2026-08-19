@@ -5,11 +5,8 @@ const VIEWPORT = 760
 const HEADER = 72
 const hero = (top: number, height = 200) => ({ top, bottom: top + height, height })
 
-/** What the floating preview keys off. */
-const shows = (top: number) => {
-  const v = visibilityOf(hero(top), VIEWPORT, HEADER)
-  return v.passed && !v.onScreen
-}
+/** What the floating preview keys off: the bar is not on screen, either way. */
+const shows = (top: number) => !visibilityOf(hero(top), VIEWPORT, HEADER).onScreen
 
 describe('element visibility', () => {
   it('fully in view', () => {
@@ -44,10 +41,10 @@ describe('element visibility', () => {
 })
 
 describe('the floating preview', () => {
-  it('stays hidden until the bar is genuinely behind you', () => {
-    expect(shows(1200)).toBe(false) // not reached yet
+  it('stands in whenever the bar is off screen', () => {
+    expect(shows(1200)).toBe(true) // below the fold, not reached yet
     expect(shows(200)).toBe(false) // looking right at it
-    expect(shows(-100)).toBe(false) // still half showing under the header
-    expect(shows(-260)).toBe(true) // gone — show the stand-in
+    expect(shows(-100)).toBe(true) // only a sliver under the header
+    expect(shows(-260)).toBe(true) // scrolled past it
   })
 })
