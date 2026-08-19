@@ -141,27 +141,48 @@ export default function App() {
               </span>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            {/* Loadable weights near this one — a scrolling row, never wrapping. */}
+            <div className="hide-scroll -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-0.5">
               {jumps.down != null && (
-                <button className="chip" onClick={() => pick(jumps.down!)}>
+                <button className="chip shrink-0" onClick={() => pick(jumps.down!)}>
                   ↓ {fmt(jumps.down)}
                 </button>
               )}
               {jumps.up != null && (
-                <button className="chip" onClick={() => pick(jumps.up!)}>
+                <button className="chip shrink-0" onClick={() => pick(jumps.up!)}>
                   ↑ {fmt(jumps.up)}
                 </button>
               )}
               {jumps.competitionUp != null && jumps.competitionUp !== jumps.up && (
-                <button className="chip" onClick={() => pick(jumps.competitionUp!)} title="Next competition increment">
+                <button
+                  className="chip shrink-0"
+                  onClick={() => pick(jumps.competitionUp!)}
+                  title="Next competition increment"
+                >
                   ↑ {fmt(jumps.competitionUp)} comp
                 </button>
               )}
-              <button className="chip text-gold" onClick={addFavorite} title="Save as favourite">
-                <StarIcon size={16} />
+            </div>
+
+            {/* Actions on this weight, kept apart from the weights you can jump to. */}
+            <div className="mt-3 flex overflow-hidden rounded-xl border border-line" role="group" aria-label="Actions">
+              <button
+                type="button"
+                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 text-sm font-medium transition hover:bg-surface2"
+                onClick={addFavorite}
+                title="Save as favourite"
+              >
+                <span className="text-gold">
+                  <StarIcon size={16} />
+                </span>
                 Save
               </button>
-              <button className="chip" onClick={copy} title="Copy a summary">
+              <button
+                type="button"
+                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 border-l border-line text-sm font-medium transition hover:bg-surface2"
+                onClick={copy}
+                title="Copy a summary"
+              >
                 <CopyIcon />
                 {copied ? 'Copied' : 'Copy'}
               </button>
