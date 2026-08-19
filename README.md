@@ -127,8 +127,8 @@ Everything lives in `src/data/plates.ts` — the SVG layer is not allowed to inv
    diameter, thickness, insert, kind, family, ink colour).
 3. Give it a starting count in the presets in the same file (`PRESETS`), and in
    `defaultInventory()` if it should be stocked by default.
-4. Nothing else needs touching: the engine, the inventory editor, the SVG plates, the loader
-   view and the sleeve ruler all read from the same definitions.
+4. Nothing else needs touching: the engine, the inventory editor and the SVG plates all read
+   from the same definitions.
 
 `kind` drives behaviour — `bumper` plates survive the bumpers-only toggle, `change` and
 `fractional` do not. `family` drives the drawing: `metcon-bumper`, `eleiko-bumper` or a steel
@@ -200,11 +200,15 @@ stack overruns the loadable sleeve (415 mm on a men's bar). Metcon 25 kg + 20 kg
 - Live breakdown: `Bar 20 + collars 5 + plates 75 = 100 kg`
 - Hero SVG barbell: knurling, marking rings, collars, mirrored plates, ground shadow,
   plates sliding on with a stagger (respects `prefers-reduced-motion`)
-- Sleeve close-up, plate labels, running total, and a millimetre sleeve ruler
+- Sleeve close-up, plate labels and a running total
 - Combination cards with a sleeve thumbnail, plate list, count, capacity bar and badges
 - Warm-up generator, % of 1RM table, next-jump and next-competition-increment chips
-- Loader view: full-screen left/right sleeve script with step-through and speech
-- Recents and named favourites, copy-summary, kg ↔ lb convert view
+- Favourites and recents in their own sections. The star always saves, so two lifts can share a
+  weight (clean 100 kg, squat 100 kg) and be told apart by name; removal is an explicit × on the
+  favourite itself. Both lists carry their unit, and tapping an entry from the other unit
+  switches brand with it — tap a 225 lb recent while in Eleiko and you land in Metcon at 225 lb,
+  no conversion.
+- Copy-summary and a kg ↔ lb convert view
 - Gym mode (bigger type, higher contrast, less chrome — on by default on a small dark screen)
 - Light and dark themes, both designed; theme follows the system until you override it
 
@@ -232,15 +236,13 @@ src/
   lib/combinations.ts     the engine — pure, integer maths, unit-tested
   lib/settings.ts         settings shape, hydration, loadout resolution
   lib/warmup.ts           ramps, % of 1RM, next jump
-  lib/loader.ts           loader-view script
   lib/format.ts           units, conversion, formatting
-  lib/speech.ts           speechSynthesis wrapper
   components/
     BarbellSVG.tsx        hero bar + sleeve thumbnail
     PlateSVG.tsx          Eleiko / Metcon / steel plate profiles and collars
     WeightInput.tsx  ComboList.tsx  ComboCard.tsx  EmptyState.tsx
     InventoryEditor.tsx   inventory + the Setup sheet
-    WarmupPanel.tsx  LoaderView.tsx  Header.tsx  ThemeToggle.tsx  ui.tsx
+    WarmupPanel.tsx  Header.tsx  ThemeToggle.tsx  ui.tsx
   hooks/useSettings.ts    localStorage, URL sync, theme, gym mode
   App.tsx
 ```
@@ -249,8 +251,8 @@ TypeScript strict throughout. Tailwind for layout, CSS variables for theming (`c
 
 ## Accessibility
 
-Every control is labelled; the sheet traps focus and closes on Escape; the loader view is
-keyboard-driven (arrows and space); results announce politely; focus rings are visible;
+Every control is labelled; the sheet traps focus, opens on its first field and closes on
+Escape; results announce politely; focus rings are visible;
 touch targets are at least 44 px; animation is disabled under `prefers-reduced-motion`; and the
 barbell exposes a text description of the current load.
 

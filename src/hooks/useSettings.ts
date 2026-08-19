@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BARS, type Brand } from '../data/plates'
+import { BARS, type Brand, type Unit } from '../data/plates'
 import type { RankMode } from '../lib/combinations'
 import { STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
 
@@ -120,11 +120,20 @@ export function useSettings() {
     setSettings((prev) => ({ ...prev, target: Math.max(0, Math.round(target * 1000) / 1000) }))
   }, [])
 
-  /** Push a weight onto the recents list (deduped, most recent first). */
-  const rememberWeight = useCallback((w: number) => {
+  /** Push a weight onto the recents list (deduped by weight and unit, newest first). */
+  const rememberWeight = useCallback((weight: number, unit?: Unit) => {
+    setSettings((prev) => remember(prev, weight, unit ?? prev.unit))
+  }, [])
+
+  /**
+   * Load a weight that already knows its own unit — a recent or a favourite.
+   * Pounds mean Metcon, kilos mean Eleiko, so this can switch brand; the weight
+   * is then used as-is rather than converted, because it is already in that unit.
+   */
+  const pickWeight = useCallback((weight: number, unit: Unit) => {
     setSettings((prev) => {
-      const list = [w, ...prev.lastWeights.filter((x) => x !== w)].slice(0, 15)
-      return { ...prev, lastWeights: list }
+      const next = prev.unit === unit ? prev : applyBrand(prev, brandForUnit(unit))
+      return remember({ ...next, target: weight }, weight, unit)
     })
   }, [])
 
@@ -135,7 +144,12 @@ export function useSettings() {
     [settings.theme],
   )
 
-  return { settings, update, setBrand, setTarget, rememberWeight, reset, isDark }
+  return { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset, isDark }
+}
+
+function remember(s: Settings, weight: number, unit: Unit): Settings {
+  const list = [{ weight, unit }, ...s.lastWeights.filter((x) => !(x.weight === weight && x.unit === unit))]
+  return { ...s, lastWeights: list.slice(0, 15) }
 }
 
 export const prefersReducedMotion = () =>

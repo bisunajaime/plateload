@@ -197,20 +197,11 @@ export const StarIcon = ({ filled = false }: { filled?: boolean }) => (
 export const CopyIcon = () => (
   <svg {...ico} aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
 )
-export const SpeakerIcon = () => (
-  <svg {...ico} aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
-)
 export const ZoomIcon = () => (
   <svg {...ico} aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5M8 11h6" /></svg>
 )
-export const RulerIcon = () => (
-  <svg {...ico} aria-hidden="true"><rect x="2" y="8" width="20" height="8" rx="2" /><path d="M6 8v3m4-3v5m4-5v3m4-3v5" /></svg>
-)
 export const TagIcon = () => (
   <svg {...ico} aria-hidden="true"><path d="M3 11V4a1 1 0 0 1 1-1h7l9 9-8 8Z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" /></svg>
-)
-export const LoaderIcon = () => (
-  <svg {...ico} aria-hidden="true"><path d="M4 8v8m16-8v8M8 6v12m8-12v12" /><path d="M8 12h8" /></svg>
 )
 export const FlameIcon = () => (
   <svg {...ico} aria-hidden="true"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-1.7.8-3 1.6-4.1.4 1 1.2 1.6 2 1.6 1.4 0 1.6-2.4 1.4-6.5Z" /></svg>

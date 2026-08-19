@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COLLARS, getPlateSet, plateId } from '../data/plates'
 import { denomsFromPlates, solve } from './combinations'
-import { loaderSteps } from './loader'
 import { applyBrand, buildSolveInput, defaultSettings, hydrate, resolveLoadout, unitForBrand } from './settings'
 
 describe('a brand carries its unit', () => {
@@ -75,7 +74,20 @@ describe('stored settings', () => {
     // the stored 100 was pounds, so it comes back as the same load in kilos
     expect(s.target).toBe(45.5)
     expect(s.favorites).toEqual([])
-    expect(s.lastWeights).toEqual([100])
+    // a bare number from an older store is tagged with the unit it was saved under
+    expect(s.lastWeights).toEqual([{ weight: 100, unit: 'lb' }])
+  })
+
+  it('recents keep the unit they were entered in', () => {
+    const s = hydrate({
+      brand: 'eleiko',
+      lastWeights: [{ weight: 100, unit: 'kg' }, { weight: 225, unit: 'lb' }, { weight: 'junk' }, 60],
+    })
+    expect(s.lastWeights).toEqual([
+      { weight: 100, unit: 'kg' },
+      { weight: 225, unit: 'lb' },
+      { weight: 60, unit: 'kg' },
+    ])
   })
 
   it('a stored unit that contradicts the brand is repaired', () => {
@@ -100,13 +112,4 @@ describe('end to end through the app’s own settings', () => {
     expect(res.combos[0].plates.map((p) => p.weight)).toEqual([25, 10, 2.5])
   })
 
-  it('the loader script ends with the collars', () => {
-    const s = applyBrand(defaultSettings(), 'metcon')
-    const input = buildSolveInput(s, 225)
-    const res = solve(input, 'fewest')
-    const steps = loaderSteps(res.combos[0], resolveLoadout(s).plates, 'lb', s.collarKind)
-    // Two plates either way; the tie goes to the heavier plate innermost.
-    expect(steps.map((x) => x.text).slice(0, 2)).toEqual(['55 lb', '35 lb'])
-    expect(steps[steps.length - 1].text).toBe('Fast Clips on')
-  })
 })

@@ -22,6 +22,12 @@ export interface Favorite {
   unit: Unit
 }
 
+/** A recent weight is meaningless without the unit it was entered in. */
+export interface RecentWeight {
+  weight: number
+  unit: Unit
+}
+
 export interface Settings {
   theme: 'light' | 'dark' | 'system'
   unit: Unit
@@ -39,12 +45,10 @@ export interface Settings {
   inventory: Record<string, number>
   gymMode: boolean
   showLabels: boolean
-  showRuler: boolean
   closeUp: boolean
-  announce: boolean
   target: number
   mode: RankMode
-  lastWeights: number[]
+  lastWeights: RecentWeight[]
   favorites: Favorite[]
 }
 
@@ -72,9 +76,7 @@ export function defaultSettings(): Settings {
     },
     gymMode: false,
     showLabels: true,
-    showRuler: false,
     closeUp: false,
-    announce: false,
     target: 100,
     mode: 'recommended',
     lastWeights: [],
@@ -92,13 +94,28 @@ export function hydrate(raw: unknown): Settings {
     ...s,
     inventory: { ...base.inventory, ...(s.inventory ?? {}) },
     favorites: Array.isArray(s.favorites) ? s.favorites.filter((f) => f && typeof f.weight === 'number') : [],
-    lastWeights: Array.isArray(s.lastWeights) ? s.lastWeights.filter((n) => typeof n === 'number').slice(0, 15) : [],
+    lastWeights: hydrateRecents(s.lastWeights, (s.unit as Unit) ?? base.unit),
   }
   if (!BARS.some((b) => b.id === merged.barId)) merged.barId = defaultBarId(merged.brand, merged.unit)
   if (!Number.isFinite(merged.target) || merged.target <= 0) merged.target = base.target
   // Old stores (and hand-edited ones) may hold a unit the brand does not use.
   if (merged.unit !== unitForBrand(merged.brand)) return applyBrand(merged, merged.brand)
   return merged
+}
+
+/** Accepts the old `number[]` shape and tags those entries with the stored unit. */
+function hydrateRecents(raw: unknown, storedUnit: Unit): RecentWeight[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((r) =>
+      typeof r === 'number'
+        ? { weight: r, unit: storedUnit }
+        : r && typeof (r as RecentWeight).weight === 'number' && ((r as RecentWeight).unit === 'kg' || (r as RecentWeight).unit === 'lb')
+          ? { weight: (r as RecentWeight).weight, unit: (r as RecentWeight).unit }
+          : null,
+    )
+    .filter((r): r is RecentWeight => r !== null)
+    .slice(0, 15)
 }
 
 /* -------------------------------------------------------------- resolution */

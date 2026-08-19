@@ -19,7 +19,6 @@ export interface BarbellSVGProps {
   collarWidthMm: number
   unit: Unit
   showLabels?: boolean
-  showRuler?: boolean
   /** Zoom in on a single sleeve. */
   closeUp?: boolean
   animate?: boolean
@@ -44,7 +43,6 @@ export function BarbellSVG({
   collarWidthMm,
   unit,
   showLabels = false,
-  showRuler = false,
   closeUp = false,
   animate = true,
   className,
@@ -77,11 +75,9 @@ export function BarbellSVG({
 
   const collarX = shaftEnd + used
   const collarFits = collarKind ? collarX + collarWidthMm <= L - 6 : true
-  const usedWithCollar = used + (collarKind ? collarWidthMm : 0)
-  const over = usedWithCollar > sleeve
 
   const top = -300
-  const height = showRuler ? 700 : 640
+  const height = 640
   const viewBox = closeUp
     ? `${shaftEnd - 190} ${top} ${L - shaftEnd + 230} ${height}`
     : `-20 ${top} ${L + 40} ${height}`
@@ -185,7 +181,7 @@ export function BarbellSVG({
         </g>
       ))}
 
-      {/* -------------------------------------------------- labels and ruler */}
+      {/* ------------------------------------------------------------- labels */}
       {showLabels &&
         instances.map((inst) => (
           <g key={`lab-${inst.index}`}>
@@ -217,33 +213,6 @@ export function BarbellSVG({
         </text>
       )}
 
-      {showRuler && (
-        <g transform={`translate(0 ${330})`}>
-          <line x1={shaftEnd} y1={0} x2={shaftEnd + sleeve} y2={0} stroke="rgb(var(--ink))" strokeOpacity="0.35" strokeWidth="2" />
-          {Array.from({ length: Math.floor(sleeve / 50) + 1 }, (_, i) => (
-            <g key={i}>
-              <line
-                x1={shaftEnd + i * 50}
-                y1={-8}
-                x2={shaftEnd + i * 50}
-                y2={8}
-                stroke="rgb(var(--ink))"
-                strokeOpacity="0.35"
-                strokeWidth="2"
-              />
-              {i % 2 === 0 && (
-                <text x={shaftEnd + i * 50} y={34} textAnchor="middle" fontSize="24" fill="rgb(var(--muted))">
-                  {i * 50}
-                </text>
-              )}
-            </g>
-          ))}
-          <rect x={shaftEnd} y={-16} width={Math.min(usedWithCollar, sleeve)} height={32} rx={4} fill={over ? 'rgb(var(--bad))' : 'rgb(var(--good))'} opacity="0.28" />
-          <text x={shaftEnd + sleeve + 14} y={8} fontSize="26" fontWeight="700" fill={over ? 'rgb(var(--bad))' : 'rgb(var(--muted))'}>
-            {Math.round(usedWithCollar)} / {sleeve} mm
-          </text>
-        </g>
-      )}
     </svg>
   )
 }

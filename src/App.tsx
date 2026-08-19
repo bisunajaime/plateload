@@ -1,25 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { BarbellSVG } from './components/BarbellSVG'
 import { ComboList } from './components/ComboList'
 import { EmptyState } from './components/EmptyState'
 import { Header } from './components/Header'
 import { SettingsSheet } from './components/InventoryEditor'
-import { LoaderView } from './components/LoaderView'
 import { WarmupPanel } from './components/WarmupPanel'
 import { WeightInput } from './components/WeightInput'
-import { CopyIcon, LoaderIcon, RulerIcon, Sheet, SpeakerIcon, StarIcon, TagIcon, ZoomIcon } from './components/ui'
+import { CopyIcon, Sheet, StarIcon, TagIcon, XIcon, ZoomIcon } from './components/ui'
 import { COLLARS } from './data/plates'
 import { comboTotal, smallestIncrement, solve, type Combo } from './lib/combinations'
-import { fmt, platesCompact } from './lib/format'
+import { fmt } from './lib/format'
 import { buildSolveInput, resolveLoadout } from './lib/settings'
-import { speak, speechAvailable } from './lib/speech'
 import { nextJump } from './lib/warmup'
 import { prefersReducedMotion, useSettings } from './hooks/useSettings'
 
 export default function App() {
-  const { settings, update, setBrand, setTarget, rememberWeight, reset } = useSettings()
+  const { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset } = useSettings()
   const [setupOpen, setSetupOpen] = useState(false)
-  const [loaderOpen, setLoaderOpen] = useState(false)
   const [favOpen, setFavOpen] = useState(false)
   const [favLabel, setFavLabel] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -39,19 +36,6 @@ export default function App() {
     return result.combos.find((c) => c.id === selectedId) ?? result.combos[0]
   }, [result, selectedId])
 
-  useEffect(() => {
-    if (result.ok && result.combos.length && !result.combos.some((c) => c.id === selectedId)) {
-      setSelectedId(result.combos[0].id)
-    }
-  }, [result, selectedId])
-
-  useEffect(() => {
-    if (settings.announce && selected) {
-      speak(`${fmt(settings.target)} ${settings.unit}. ${platesCompact(selected.plates)} each side.`)
-    }
-    // Announcing on every keystroke would be unbearable — only on a new combo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id])
 
   const collarKind = settings.collars ? settings.collarKind : null
   const collarWidth = COLLARS[settings.collarKind].widthMm
@@ -86,14 +70,15 @@ export default function App() {
     [setTarget, rememberWeight],
   )
 
-  const isFavorite = settings.favorites.some((f) => f.weight === settings.target && f.unit === settings.unit)
-  const toggleFavorite = () => {
-    if (isFavorite) {
-      update({ favorites: settings.favorites.filter((f) => !(f.weight === settings.target && f.unit === settings.unit)) })
-    } else {
-      setFavLabel('')
-      setFavOpen(true)
-    }
+  // Every favourite is shown whatever its unit — tapping one in the other unit
+  // switches brand with it. The index rides along so removal is unambiguous.
+  const favorites = settings.favorites.map((f, index) => ({ ...f, index }))
+
+  // The star only ever saves — two lifts can share a weight (clean 100, squat 100),
+  // so removal lives in the favourites list where you can see which is which.
+  const addFavorite = () => {
+    setFavLabel('')
+    setFavOpen(true)
   }
 
   const animate = !prefersReducedMotion()
@@ -148,13 +133,9 @@ export default function App() {
                   ↑ {fmt(jumps.competitionUp)} comp
                 </button>
               )}
-              <button
-                className="chip"
-                onClick={toggleFavorite}
-                aria-pressed={isFavorite}
-                title={isFavorite ? 'Remove favourite' : 'Save as favourite'}
-              >
-                <StarIcon filled={isFavorite} />
+              <button className="chip" onClick={addFavorite} title="Save as favourite">
+                <StarIcon />
+                Save
               </button>
               <button className="chip" onClick={copy} title="Copy a summary">
                 <CopyIcon />
@@ -163,44 +144,59 @@ export default function App() {
             </div>
           </section>
 
-          {(settings.favorites.length > 0 || settings.lastWeights.length > 0) && (
-            <section className="card px-4 py-3" aria-label="Saved weights">
-              {settings.favorites.length > 0 && (
-                <>
-                  <h2 className="label mb-2">Favourites</h2>
-                  <div className="hide-scroll -mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
-                    {settings.favorites.map((f) => (
-                      <button
-                        key={`${f.label}-${f.weight}-${f.unit}`}
-                        className="chip"
-                        onClick={() => f.unit === settings.unit && pick(f.weight)}
-                        onContextMenu={(e) => {
-                          e.preventDefault()
-                          update({ favorites: settings.favorites.filter((x) => x !== f) })
-                        }}
-                        title="Long-press or right-click to remove"
-                      >
-                        <span className="font-semibold">{f.label || fmt(f.weight)}</span>
-                        <span className="text-muted tabular-nums">
-                          {fmt(f.weight)} {f.unit}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {settings.lastWeights.length > 0 && (
-                <>
-                  <h2 className="label mb-2">Recent</h2>
-                  <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                    {settings.lastWeights.map((w) => (
-                      <button key={w} className="chip tabular-nums" onClick={() => pick(w)}>
-                        {fmt(w)}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+          {favorites.length > 0 && (
+            <section className="card px-4 py-3" aria-label="Favourites">
+              <h2 className="label mb-2">Favourites</h2>
+              <ul className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {favorites.map((f) => (
+                  <li
+                    key={`${f.index}`}
+                    className="inline-flex shrink-0 items-center rounded-full border border-line bg-surface"
+                  >
+                    <button
+                      type="button"
+                      className="min-h-[40px] rounded-l-full px-3.5 text-sm font-medium transition hover:bg-surface2 active:scale-95"
+                      onClick={() => pickWeight(f.weight, f.unit)}
+                      title={f.unit === settings.unit ? undefined : `Switches to ${f.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
+                    >
+                      {f.label && <span className="font-semibold">{f.label}</span>}
+                      <span className={`tabular-nums ${f.label ? 'ml-1.5 text-muted' : 'font-semibold'}`}>
+                        {fmt(f.weight)} {f.unit}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-[40px] rounded-r-full border-l border-line px-2.5 text-muted transition hover:bg-surface2 hover:text-bad"
+                      onClick={() =>
+                        update({ favorites: settings.favorites.filter((_, i) => i !== f.index) })
+                      }
+                      aria-label={`Remove favourite ${f.label || fmt(f.weight)} — ${fmt(f.weight)} ${f.unit}`}
+                      title="Remove"
+                    >
+                      <XIcon />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {settings.lastWeights.length > 0 && (
+            <section className="card px-4 py-3" aria-label="Recent weights">
+              <h2 className="label mb-2">Recent</h2>
+              <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {settings.lastWeights.map((r) => (
+                  <button
+                    key={`${r.weight}-${r.unit}`}
+                    className="chip tabular-nums"
+                    onClick={() => pickWeight(r.weight, r.unit)}
+                    title={r.unit === settings.unit ? undefined : `Switches to ${r.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
+                  >
+                    <span className="font-semibold">{fmt(r.weight)}</span>
+                    <span className={r.unit === settings.unit ? 'text-muted' : 'text-ink'}>{r.unit}</span>
+                  </button>
+                ))}
+              </div>
             </section>
           )}
         </div>
@@ -217,7 +213,6 @@ export default function App() {
                 collarWidthMm={collarWidth}
                 unit={settings.unit}
                 showLabels={settings.showLabels}
-                showRuler={settings.showRuler}
                 closeUp={settings.closeUp}
                 animate={animate}
                 zoom={zoom}
@@ -242,32 +237,9 @@ export default function App() {
                 <TagIcon />
                 Labels
               </button>
-              <button
-                className="chip"
-                aria-pressed={settings.showRuler}
-                onClick={() => update({ showRuler: !settings.showRuler })}
-              >
-                <RulerIcon />
-                Ruler
-              </button>
               <button className="chip" onClick={() => setZoom((z) => (z >= 2.4 ? 1 : z + 0.7))} title="Magnify the bar">
                 {zoom > 1 ? `${zoom.toFixed(1)}×` : 'Zoom'}
               </button>
-              <button className="chip" onClick={() => setLoaderOpen(true)} disabled={!selected}>
-                <LoaderIcon />
-                Loader view
-              </button>
-              {speechAvailable() && (
-                <button
-                  className="chip"
-                  aria-pressed={settings.announce}
-                  onClick={() => update({ announce: !settings.announce })}
-                  title="Speak each combination"
-                >
-                  <SpeakerIcon />
-                  Announce
-                </button>
-              )}
               {selected && (
                 <span className="ml-auto shrink-0 pl-2 text-xs text-muted tabular-nums">
                   {Math.round(selected.sleeveMm)} / {loadout.sleeveMm} mm
@@ -338,16 +310,6 @@ export default function App() {
         }}
       />
 
-      <LoaderView
-        open={loaderOpen}
-        onClose={() => setLoaderOpen(false)}
-        combo={selected}
-        plates={loadout.plates}
-        unit={settings.unit}
-        total={settings.target}
-        collarKind={collarKind}
-        announce={settings.announce}
-      />
 
       <Sheet
         open={favOpen}
@@ -392,7 +354,8 @@ export default function App() {
             }}
           />
           <span className="text-xs text-muted">
-            Pins {fmt(settings.target)} {settings.unit} to the top for next time.
+            Pins {fmt(settings.target)} {settings.unit} for next time. Two lifts can share a weight — the name is
+            how you tell them apart.
           </span>
         </label>
       </Sheet>
