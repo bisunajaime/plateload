@@ -21,6 +21,11 @@ export interface BarbellSVGProps {
   showLabels?: boolean
   /** Zoom in on a single sleeve. */
   closeUp?: boolean
+  /** Ceiling on the drawn height, applied as a width cap at the drawing's own
+   *  aspect. The close-up is nearly square, so on a wide card it would
+   *  otherwise swallow the fold. Scales with zoom so the magnifier still
+   *  does something. */
+  maxHeightPx?: number
   animate?: boolean
   className?: string
   /** Extra horizontal magnification; the container scrolls. */
@@ -44,6 +49,7 @@ export function BarbellSVG({
   unit,
   showLabels = false,
   closeUp = false,
+  maxHeightPx,
   animate = true,
   className,
   zoom = 1,
@@ -78,9 +84,12 @@ export function BarbellSVG({
 
   const top = -300
   const height = 640
-  const viewBox = closeUp
-    ? `${shaftEnd - 190} ${top} ${L - shaftEnd + 230} ${height}`
-    : `-20 ${top} ${L + 40} ${height}`
+  const vbWidth = closeUp ? L - shaftEnd + 230 : L + 40
+  const viewBox = `${closeUp ? shaftEnd - 190 : -20} ${top} ${vbWidth} ${height}`
+  // Cap the width, not the height: a shorter box than the drawing's own aspect
+  // would letterbox it, and the platform floor clips to the viewport rather
+  // than to the drawing, so the dead space lands all on one side.
+  const capPx = maxHeightPx ? maxHeightPx * (vbWidth / height) * Math.max(1, zoom) : undefined
 
   const sleeveY = 26
   const shaftY = bar.shaftMm / 2
@@ -97,7 +106,10 @@ export function BarbellSVG({
     <svg
       className={className}
       viewBox={viewBox}
-      style={{ width: `${Math.max(100, zoom * 100)}%` }}
+      style={{
+        width: `${Math.max(100, zoom * 100)}%`,
+        maxWidth: capPx ? `${capPx}px` : undefined,
+      }}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={
@@ -120,7 +132,7 @@ export function BarbellSVG({
 
       {/* platform line + contact shadow */}
       <ellipse cx={L / 2} cy={268} rx={L * 0.44} ry={26} fill={`url(#${uid}-shadow)`} />
-      <rect x={-40} y={272} width={L + 80} height={110} fill={`url(#${uid}-floor)`} />
+      {!closeUp && <rect x={-40} y={272} width={L + 80} height={110} fill={`url(#${uid}-floor)`} />}
       <line x1={-40} y1={272} x2={L + 80} y2={272} stroke="rgb(var(--ink))" strokeOpacity="0.18" strokeWidth="2" />
 
       {/* ------------------------------------------------------------- the bar */}

@@ -7,7 +7,8 @@ import { MiniBar } from './components/MiniBar'
 import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
 import { WeightInput } from './components/WeightInput'
-import { ClockIcon, CopyIcon, ScaleIcon, SectionHeader, Sheet, StarIcon, TagIcon, XIcon, ZoomIcon } from './components/ui'
+import { RAIL } from './components/rail'
+import { CopyIcon, ScaleIcon, SectionHeader, Sheet, StarIcon, TagIcon, XIcon, ZoomIcon } from './components/ui'
 import { COLLARS } from './data/plates'
 import { comboTotal, smallestIncrement, solve, type Combo } from './lib/combinations'
 import { fmt } from './lib/format'
@@ -114,10 +115,11 @@ export default function App() {
             onChange={setTarget}
             onCommit={rememberWeight}
             quickSteps={quickSteps}
+            showHint={settings.lastWeights.length === 0}
           />
 
           {/* live breakdown */}
-          <section className="card px-4 py-3" aria-label="Weight breakdown">
+          <section className={`card px-4 py-3 ${RAIL.steel}`} aria-label="Weight breakdown">
             <SectionHeader icon={<ScaleIcon />} tone="steel">
               Breakdown
             </SectionHeader>
@@ -139,17 +141,17 @@ export default function App() {
               ))}
             </dl>
 
-            <div className="mt-2.5 flex items-baseline justify-between border-t border-line pt-2.5">
+            <div className="mt-2.5 border-t border-line pt-2.5">
               <span className="text-xs text-muted">
                 {fmt(result.perSide > 0 ? result.perSide : 0)} {settings.unit} a side · steps of {fmt(step)}
-              </span>
-              <span className="text-sm font-semibold tabular-nums">
-                {fmt(settings.target)} {settings.unit}
               </span>
             </div>
 
             {/* Loadable weights near this one — a scrolling row, never wrapping. */}
-            <div className="hide-scroll -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-0.5">
+            {(jumps.down != null || jumps.up != null) && (
+              <h3 className="label mt-3">Nearby loadable</h3>
+            )}
+            <div className="hide-scroll -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-0.5">
               {jumps.down != null && (
                 <button className="chip shrink-0" onClick={() => pick(jumps.down!)}>
                   ↓ {fmt(jumps.down)}
@@ -166,7 +168,7 @@ export default function App() {
                   onClick={() => pick(jumps.competitionUp!)}
                   title="Next competition increment"
                 >
-                  ↑ {fmt(jumps.competitionUp)} comp
+                  ↑ {fmt(jumps.competitionUp)} competition
                 </button>
               )}
             </div>
@@ -196,16 +198,23 @@ export default function App() {
             </div>
           </section>
 
-          {favorites.length > 0 && (
-            <section className="card overflow-hidden" aria-label="Favourites">
+          {/* Starred and recent are the same thought — weights you have used —
+              so they share a card and one colour instead of bracketing the tools. */}
+          {(favorites.length > 0 || settings.lastWeights.length > 0) && (
+            <section className={`card overflow-hidden ${RAIL.gold}`} aria-label="Your weights">
               <SectionHeader
                 icon={<StarIcon size={16} filled />}
                 tone="gold"
                 className="px-4 pb-2.5 pt-3"
-                right={<span className="text-xs text-muted tabular-nums">{favorites.length} saved</span>}
+                right={
+                  favorites.length > 0 ? (
+                    <span className="text-xs text-muted tabular-nums">{favorites.length} saved</span>
+                  ) : undefined
+                }
               >
-                Favourites
+                Your weights
               </SectionHeader>
+              {favorites.length > 0 && (
               <ul className="max-h-64 divide-y divide-line overflow-y-auto border-t border-line">
                 {favorites.map((f) => {
                   const foreign = f.unit !== settings.unit
@@ -243,20 +252,40 @@ export default function App() {
                   )
                 })}
               </ul>
+              )}
+
+              {settings.lastWeights.length > 0 && (
+                <div className="border-t border-line px-4 py-3">
+                  <h3 className="label mb-2">Recent</h3>
+                  <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                    {settings.lastWeights.map((r) => (
+                      <button
+                        key={`${r.weight}-${r.unit}`}
+                        className="chip tabular-nums"
+                        onClick={() => pickWeight(r.weight, r.unit)}
+                        title={r.unit === settings.unit ? undefined : `Switches to ${r.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
+                      >
+                        <span className="font-semibold">{fmt(r.weight)}</span>
+                        <span className={r.unit === settings.unit ? 'text-muted' : 'text-ink'}>{r.unit}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
         </div>
 
         {/* ------------------------------------------------------ hero + list */}
-        {/* On a phone this drops below the tools; on desktop it is the right-hand column. */}
-        <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        {/* The answer comes straight after the target on a phone; on desktop it is the right-hand column. */}
+        <div className="order-2 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <section
             ref={heroRef}
             className="card platform-grain scroll-mt-20 overflow-hidden"
             aria-label="Loaded barbell"
           >
-            <div className="hide-scroll overflow-x-auto">
+            <div className={`hide-scroll flex overflow-x-auto ${zoom > 1 ? '' : 'justify-center'}`}>
               <BarbellSVG
                 bar={loadout.bar}
                 plates={loadout.plates}
@@ -268,6 +297,7 @@ export default function App() {
                 closeUp={settings.closeUp}
                 animate={animate}
                 zoom={zoom}
+                maxHeightPx={360}
                 className="block h-auto"
               />
             </div>
@@ -306,7 +336,6 @@ export default function App() {
               mode={settings.mode}
               onMode={(mode) => update({ mode })}
               plates={loadout.plates}
-              unit={settings.unit}
               collarKind={collarKind}
               collarWidthMm={collarWidth}
               sleeveMm={loadout.sleeveMm}
@@ -336,29 +365,15 @@ export default function App() {
         </div>
 
         {/* ---------------------------------------------------------- tools */}
-        <div className="order-2 flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
-          <WarmupPanel input={input} unit={settings.unit} target={settings.target} onPick={pick} />
+        <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
+          <WarmupPanel
+            input={input}
+            unit={settings.unit}
+            target={settings.target}
+            onPick={pick}
+            onPickStep={setTarget}
+          />
 
-          {settings.lastWeights.length > 0 && (
-            <section className="card px-4 py-3" aria-label="Recent weights">
-              <SectionHeader icon={<ClockIcon />} tone="sky" className="mb-2.5">
-                Recent
-              </SectionHeader>
-              <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {settings.lastWeights.map((r) => (
-                  <button
-                    key={`${r.weight}-${r.unit}`}
-                    className="chip tabular-nums"
-                    onClick={() => pickWeight(r.weight, r.unit)}
-                    title={r.unit === settings.unit ? undefined : `Switches to ${r.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
-                  >
-                    <span className="font-semibold">{fmt(r.weight)}</span>
-                    <span className={r.unit === settings.unit ? 'text-muted' : 'text-ink'}>{r.unit}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
           <footer className="px-1 pb-6 text-xs text-muted gym-hide">
             <p>
               Plate geometry from Eleiko competition specs and the Metcon Group PH bumper range — 450 mm, 50.4 mm insert,

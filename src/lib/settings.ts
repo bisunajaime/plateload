@@ -62,8 +62,8 @@ export interface Settings {
 export const STORAGE_KEY = 'plateload.v1'
 
 export function defaultSettings(): Settings {
-  const brand: Brand = 'eleiko'
-  const unit: Unit = 'kg'
+  const brand: Brand = 'metcon'
+  const unit: Unit = 'lb'
   return {
     theme: 'system',
     unit,
@@ -84,7 +84,7 @@ export function defaultSettings(): Settings {
     gymMode: false,
     preview: { side: 'right', y: 0.08 },
     showLabels: false,
-    closeUp: false,
+    closeUp: true,
     target: 100,
     mode: 'recommended',
     lastWeights: [],

@@ -1,40 +1,91 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Unit } from '../data/plates'
 import type { SolveInput } from '../lib/combinations'
 import { convert, fmt } from '../lib/format'
 import { DEFAULT_RAMP, percentTable, warmupPlan } from '../lib/warmup'
-import { FlameIcon, SectionHeader, Segmented } from './ui'
+import { RAIL } from './rail'
+import { ChevronIcon, FlameIcon, Segmented } from './ui'
 
 type Tab = 'warmup' | 'percent' | 'convert'
+
+const DESKTOP = '(min-width: 1024px)'
 
 export function WarmupPanel({
   input,
   unit,
   target,
   onPick,
+  onPickStep,
 }: {
   input: SolveInput
   unit: Unit
   target: number
+  /** Choosing a working weight: moves the bar and is worth remembering. */
   onPick: (w: number) => void
+  /** Climbing the ramp: moves the bar only. */
+  onPickStep: (w: number) => void
 }) {
+  // Three tabs, a 1RM field and a percentage grid are a second app beside the
+  // bar. On a phone that was outranking the loaded barbell, so it starts shut
+  // and only stands open where it has a column of its own.
+  const [open, setOpen] = useState(() => window.matchMedia(DESKTOP).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP)
+    const sync = () => setOpen(mq.matches)
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
   const [tab, setTab] = useState<Tab>('warmup')
   const [ramp, setRamp] = useState<number[]>(DEFAULT_RAMP)
-  const [oneRm, setOneRm] = useState(target)
   const [step, setStep] = useState(5)
 
-  const plan = useMemo(() => warmupPlan(target, input, ramp), [target, input, ramp])
+  // The weight the ramp is built towards, held apart from the weight on the bar.
+  // Tying the plan to the target made the list rewrite itself the moment you
+  // used it: tap 60 % and the panel became a ramp to 60, work weight gone.
+  const [work, setWork] = useState(target)
+  const [oneRm, setOneRm] = useState(target)
+  const [rmEdited, setRmEdited] = useState(false)
+
+  const plan = useMemo(() => warmupPlan(work, input, ramp), [work, input, ramp])
   const rows = useMemo(() => percentTable(oneRm, input, 50, 100, step), [oneRm, input, step])
   const other: Unit = unit === 'kg' ? 'lb' : 'kg'
   /** Marks whichever rows already match what is on the bar. */
   const isLoaded = (w: number) => Math.abs(w - target) < 0.001
 
+  // Derived during render, no effect — the same trick the combination list uses.
+  const [prevTarget, setPrevTarget] = useState(target)
+  if (target !== prevTarget) {
+    setPrevTarget(target)
+    // Every step of a ramp sits at or below its top, so anything heavier is a
+    // new working weight. Lighter is someone climbing, or nudging a warm-up
+    // set by a plate — the plan holds, and the chip below re-anchors it.
+    if (target > work + 1e-9) setWork(target)
+    if (!rmEdited) setOneRm(target)
+  }
+
+  // A brand switch converts the target into the other unit; carrying the old
+  // number across would silently mean a different load.
+  const [prevUnit, setPrevUnit] = useState(unit)
+  if (unit !== prevUnit) {
+    setPrevUnit(unit)
+    setWork(target)
+    setOneRm(target)
+    setRmEdited(false)
+  }
+
   return (
-    <section className="card p-4" aria-label="Training tools">
-      <SectionHeader icon={<FlameIcon size={16} />} tone="flame" className="mb-3">
-        Training tools
-      </SectionHeader>
-      <div className="hide-scroll -mx-1 overflow-x-auto px-1 pb-2">
+    <details className={`card p-4 ${RAIL.flame}`} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl [&::-webkit-details-marker]:hidden">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-flame/15 text-flame" aria-hidden="true">
+          <FlameIcon size={16} />
+        </span>
+        <h2 className="label">Training tools</h2>
+        <span className="ml-auto shrink-0 text-muted">
+          <ChevronIcon open={open} />
+        </span>
+      </summary>
+      <div className="hide-scroll -mx-1 mt-3 overflow-x-auto px-1 pb-2">
         <Segmented
           value={tab}
           onChange={setTab}
@@ -51,7 +102,14 @@ export function WarmupPanel({
       {tab === 'warmup' && (
         <div className="mt-3">
           <p className="mb-3 text-xs text-muted">
-            Ramp to {fmt(target)} {unit}. Every step is snapped to what your gym can actually load.
+            Ramp to {fmt(work)} {unit}
+            {Math.abs(work - target) > 0.001 && (
+              <>
+                {' '}
+                — <span className="font-semibold text-good">{fmt(target)} {unit}</span> on the bar
+              </>
+            )}
+            . Every step is snapped to what your gym can actually load.
           </p>
           <ul className="flex flex-col gap-2">
             {plan.map((s) => {
@@ -62,7 +120,7 @@ export function WarmupPanel({
                   type="button"
                   aria-current={loaded ? 'true' : undefined}
                   className={`btn w-full justify-between px-4 ${loaded ? 'border-transparent bg-good/10 ring-2 ring-good' : ''}`}
-                  onClick={() => onPick(s.weight)}
+                  onClick={() => onPickStep(s.weight)}
                 >
                   <span className="flex items-center gap-3">
                     <span className={`flex w-12 items-center gap-1.5 text-left text-xs uppercase tracking-wider ${loaded ? 'font-semibold text-good' : 'text-muted'}`}>
@@ -97,6 +155,11 @@ export function WarmupPanel({
                 {p.label}
               </button>
             ))}
+            {work - target > 0.001 && (
+              <button type="button" className="chip" onClick={() => setWork(target)}>
+                Ramp to {fmt(target)} {unit} instead
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -112,7 +175,10 @@ export function WarmupPanel({
                 min={0}
                 className="btn w-28 justify-center"
                 value={oneRm}
-                onChange={(e) => setOneRm(Number(e.target.value))}
+                onChange={(e) => {
+                  setOneRm(Number(e.target.value))
+                  setRmEdited(true)
+                }}
                 aria-label={`One rep max in ${unit}`}
               />
               <span className="text-muted">{unit}</span>
@@ -187,6 +253,6 @@ export function WarmupPanel({
           </ul>
         </div>
       )}
-    </section>
+    </details>
   )
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Unit } from '../data/plates'
 import { converted, fmt } from '../lib/format'
+import { RAIL } from './rail'
 import { MinusIcon, PlusIcon, SectionHeader, Sheet, TargetIcon } from './ui'
 
 export interface WeightInputProps {
@@ -11,9 +12,11 @@ export interface WeightInputProps {
   onChange: (v: number) => void
   onCommit?: (v: number) => void
   quickSteps: number[]
+  /** First run only: the target is the way in, so say so until they use it. */
+  showHint?: boolean
 }
 
-export function WeightInput({ value, unit, step, loadable, onChange, onCommit, quickSteps }: WeightInputProps) {
+export function WeightInput({ value, unit, step, loadable, onChange, onCommit, quickSteps, showHint = false }: WeightInputProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(() => fmt(value))
   const [keypad, setKeypad] = useState(false)
@@ -35,10 +38,10 @@ export function WeightInput({ value, unit, step, loadable, onChange, onCommit, q
   }
 
   return (
-    <section className="card p-4 sm:p-5" aria-label="Target weight">
+    <section className={`card p-4 sm:p-5 ${RAIL.sky}`} aria-label="Target weight">
       {/* Left-aligned: the floating load preview parks in the top right corner. */}
       <div className="flex items-center gap-3">
-        <SectionHeader icon={<TargetIcon />} tone={loadable ? 'good' : 'bad'}>
+        <SectionHeader icon={<TargetIcon />} tone="sky">
           Target
         </SectionHeader>
         <span
@@ -82,7 +85,7 @@ export function WeightInput({ value, unit, step, loadable, onChange, onCommit, q
           ) : (
             <button
               type="button"
-              className="flex w-full items-baseline justify-center gap-2 rounded-xl px-2 py-1"
+              className="flex w-full items-baseline justify-center gap-2 rounded-xl border-b-2 border-dashed border-line px-2 py-1 transition hover:border-ink/40"
               onClick={() => {
                 setDraft(fmt(value))
                 setEditing(true)
@@ -104,6 +107,9 @@ export function WeightInput({ value, unit, step, loadable, onChange, onCommit, q
             </button>
           )}
           <span className="mt-1 text-sm text-muted tabular-nums">≈ {converted(value, unit)}</span>
+          {showHint && !editing && (
+            <span className="mt-0.5 text-xs font-medium text-muted">Tap to type</span>
+          )}
         </div>
 
         <button

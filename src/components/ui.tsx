@@ -250,6 +250,9 @@ export const ZoomIcon = () => (
 export const TagIcon = () => (
   <svg {...ico} aria-hidden="true"><path d="M3 11V4a1 1 0 0 1 1-1h7l9 9-8 8Z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" /></svg>
 )
+export const ChevronIcon = ({ open = false }: { open?: boolean }) => (
+  <svg {...ico} width={16} height={16} aria-hidden="true" className={open ? 'rotate-90 transition' : 'transition'}><path d="m9 5 7 7-7 7" /></svg>
+)
 export const FlameIcon = ({ size = 20 }: { size?: number }) => (
   <svg {...ico} width={size} height={size} aria-hidden="true"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-1.7.8-3 1.6-4.1.4 1 1.2 1.6 2 1.6 1.4 0 1.6-2.4 1.4-6.5Z" /></svg>
 )

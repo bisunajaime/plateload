@@ -1,13 +1,12 @@
 import { memo } from 'react'
-import type { CollarKind, PlateDef, Unit } from '../data/plates'
+import type { CollarKind, PlateDef } from '../data/plates'
 import type { Combo } from '../lib/combinations'
-import { fmt, platesCompact } from '../lib/format'
+import { platesCompact } from '../lib/format'
 import { SleeveThumb } from './BarbellSVG'
 
 export interface ComboCardProps {
   combo: Combo
   plates: PlateDef[]
-  unit: Unit
   collarKind: CollarKind | null
   collarWidthMm: number
   sleeveMm: number
@@ -18,7 +17,6 @@ export interface ComboCardProps {
 export const ComboCard = memo(function ComboCard({
   combo,
   plates,
-  unit,
   collarKind,
   collarWidthMm,
   sleeveMm,
@@ -87,11 +85,6 @@ export const ComboCard = memo(function ComboCard({
               </span>
             )}
           </div>
-        </div>
-
-        <div className="hidden shrink-0 pr-1 text-right sm:block gym-hide">
-          <div className="font-display text-2xl font-semibold tabular-nums">{fmt(combo.perSide)}</div>
-          <div className="text-[11px] uppercase tracking-wider text-muted">{unit}/side</div>
         </div>
       </div>
     </button>

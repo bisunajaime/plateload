@@ -32,7 +32,7 @@ describe('a brand carries its unit', () => {
   })
 
   it('the target crosses over as the same real load, not the same number', () => {
-    const kg = { ...defaultSettings(), target: 100 }
+    const kg = { ...applyBrand(defaultSettings(), 'eleiko'), target: 100 }
     const lb = applyBrand(kg, 'metcon')
     // 100 kg is 220.5 lb, which no 2.5 lb-stepped gym can load — snapped to 220
     expect(lb.target).toBe(220)
@@ -67,8 +67,8 @@ describe('inventory', () => {
 
 describe('stored settings', () => {
   it('hydrate repairs junk without throwing away the good parts', () => {
-    const s = hydrate({ unit: 'lb', barId: 'nope', target: -5, favorites: [{ bad: true }], lastWeights: ['x', 100] })
-    // brand (default Eleiko) wins over a stored unit that contradicts it
+    const s = hydrate({ brand: 'eleiko', unit: 'lb', barId: 'nope', target: -5, favorites: [{ bad: true }], lastWeights: ['x', 100] })
+    // the stored brand wins over a stored unit that contradicts it
     expect(s.unit).toBe('kg')
     expect(s.barId).toBe('oly-men-20')
     // the stored 100 was pounds, so it comes back as the same load in kilos
@@ -81,6 +81,7 @@ describe('stored settings', () => {
   it('recents keep the unit they were entered in', () => {
     const s = hydrate({
       brand: 'eleiko',
+      unit: 'kg',
       lastWeights: [{ weight: 100, unit: 'kg' }, { weight: 225, unit: 'lb' }, { weight: 'junk' }, 60],
     })
     expect(s.lastWeights).toEqual([
@@ -105,11 +106,21 @@ describe('stored settings', () => {
 })
 
 describe('end to end through the app’s own settings', () => {
-  it('a default Eleiko session loads 100 kg as 25 + 10 + 2.5 a side', () => {
-    const s = defaultSettings()
+  it('an Eleiko session loads 100 kg as 25 + 10 + 2.5 a side', () => {
+    const s = applyBrand(defaultSettings(), 'eleiko')
     const res = solve(buildSolveInput(s, 100), 'recommended')
     expect(res.ok).toBe(true)
     expect(res.combos[0].plates.map((p) => p.weight)).toEqual([25, 10, 2.5])
+  })
+
+  it('a first run is Metcon pounds, and its opening target is loadable', () => {
+    const s = defaultSettings()
+    expect(s.brand).toBe('metcon')
+    expect(s.unit).toBe('lb')
+    expect(s.barId).toBe('us-45')
+    // The sleeve view is the one that shows the plates, so it opens there.
+    expect(s.closeUp).toBe(true)
+    expect(solve(buildSolveInput(s), 'recommended').ok).toBe(true)
   })
 
 })
