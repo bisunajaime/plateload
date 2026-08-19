@@ -1,39 +1,32 @@
 import { useEffect, useState, type RefObject } from 'react'
-
-export interface Visibility {
-  /** A meaningful part of the element is on screen. */
-  onScreen: boolean
-  /** The element has scrolled off the top — you have already passed it. */
-  passed: boolean
-}
+import { visibilityOf, type Visibility } from '../lib/visibility'
 
 /**
- * Tracks whether `ref` is on screen, and on which side it left. The top offset
- * clears the sticky header; the threshold means a sliver does not count.
+ * Tracks whether `ref` is on screen and which way it left.
+ *
+ * Measured on scroll rather than with IntersectionObserver: an observer stops
+ * reporting once the element is fully gone, which is exactly the state this
+ * needs to know about.
  */
-export function useVisibility(
-  ref: RefObject<Element | null>,
-  rootMargin = '-72px 0px 0px 0px',
-  threshold = 0.35,
-): Visibility {
+export function useVisibility(ref: RefObject<Element | null>, headerOffset = 72, minVisible = 0.35): Visibility {
   const [state, setState] = useState<Visibility>({ onScreen: true, passed: false })
 
   useEffect(() => {
-    const el = ref.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        const rootTop = entry.rootBounds?.top ?? 0
-        setState({
-          onScreen: entry.isIntersecting,
-          passed: entry.boundingClientRect.bottom < rootTop,
-        })
-      },
-      { rootMargin, threshold },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [ref, rootMargin, threshold])
+    const measure = () => {
+      const el = ref.current
+      if (!el) return
+      const next = visibilityOf(el.getBoundingClientRect(), window.innerHeight, headerOffset, minVisible)
+      setState((prev) => (prev.onScreen === next.onScreen && prev.passed === next.passed ? prev : next))
+    }
+
+    measure()
+    window.addEventListener('scroll', measure, { passive: true })
+    window.addEventListener('resize', measure)
+    return () => {
+      window.removeEventListener('scroll', measure)
+      window.removeEventListener('resize', measure)
+    }
+  }, [ref, headerOffset, minVisible])
 
   return state
 }

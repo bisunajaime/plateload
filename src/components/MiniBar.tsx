@@ -33,6 +33,8 @@ export function MiniBar({
     <button
       type="button"
       onClick={onClick}
+      aria-hidden={!show}
+      tabIndex={show ? 0 : -1}
       aria-label={`Currently loaded: ${fmt(total)} ${unit}. Scroll back to the barbell.`}
       className={`fixed right-3 top-[4.25rem] z-40 w-[150px] overflow-hidden rounded-2xl border border-line bg-surface/95 shadow-xl backdrop-blur transition duration-200 sm:right-5 sm:top-[4.75rem] sm:w-[200px] ${
         show ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'
