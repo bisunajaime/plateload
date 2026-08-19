@@ -38,7 +38,7 @@ export const ComboCard = memo(function ComboCard({
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className="h-20 w-32 shrink-0 rounded-xl bg-surface2/70 p-1 sm:h-24 sm:w-44">
+        <div className="h-24 w-32 shrink-0 rounded-xl bg-surface2/70 p-1.5 sm:h-28 sm:w-44">
           <SleeveThumb
             plates={plates}
             combo={combo}
