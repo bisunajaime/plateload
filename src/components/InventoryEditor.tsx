@@ -12,6 +12,7 @@ import {
 } from '../data/plates'
 import { fmt } from '../lib/format'
 import { collarWeightOf, type Settings } from '../lib/settings'
+import { ThemeToggle } from './ThemeToggle'
 import { Sheet, Toggle } from './ui'
 
 export function SettingsSheet({
@@ -48,6 +49,25 @@ export function SettingsSheet({
       }
     >
       <div className="flex flex-col gap-7">
+        {/* --------------------------------------------------------- display */}
+        <section aria-labelledby="set-display">
+          <h3 id="set-display" className="label mb-2">
+            Display
+          </h3>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-medium text-ink">Theme</span>
+            <ThemeToggle theme={settings.theme} onChange={(theme) => update({ theme })} />
+          </div>
+          <div className="mt-2 border-t border-line pt-1">
+            <Toggle
+              checked={settings.gymMode}
+              onChange={(gymMode) => update({ gymMode })}
+              label="Gym mode"
+              hint="Bigger type, higher contrast, secondary controls hidden — for reading the bar from a couple of metres away"
+            />
+          </div>
+        </section>
+
         {/* ------------------------------------------------------------- bar */}
         <section aria-labelledby="set-bar">
           <h3 id="set-bar" className="label mb-2">

@@ -1,6 +1,5 @@
 import type { Brand } from '../data/plates'
 import type { Settings } from '../lib/settings'
-import { ThemeToggle } from './ThemeToggle'
 import { GearIcon, LockIcon, Segmented } from './ui'
 
 export function Header({
@@ -59,20 +58,6 @@ export function Header({
             ]}
           />
         )}
-
-        <button
-          type="button"
-          className="btn min-h-[40px] px-3 text-xs font-semibold uppercase tracking-wider"
-          aria-pressed={settings.gymMode}
-          onClick={() => update({ gymMode: !settings.gymMode })}
-          title="Bigger type, higher contrast, less chrome"
-        >
-          Gym
-        </button>
-
-        <div className="gym-hide">
-          <ThemeToggle theme={settings.theme} onChange={(theme) => update({ theme })} />
-        </div>
 
         <button type="button" className="btn min-h-[40px] px-3" onClick={onSettings} aria-label="Setup: bar, collars, inventory">
           <GearIcon />

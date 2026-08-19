@@ -239,26 +239,6 @@ export default function App() {
             </section>
           )}
 
-          {settings.lastWeights.length > 0 && (
-            <section className="card px-4 py-3" aria-label="Recent weights">
-              <SectionHeader icon={<ClockIcon />} tone="sky" className="mb-2.5">
-                Recent
-              </SectionHeader>
-              <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {settings.lastWeights.map((r) => (
-                  <button
-                    key={`${r.weight}-${r.unit}`}
-                    className="chip tabular-nums"
-                    onClick={() => pickWeight(r.weight, r.unit)}
-                    title={r.unit === settings.unit ? undefined : `Switches to ${r.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
-                  >
-                    <span className="font-semibold">{fmt(r.weight)}</span>
-                    <span className={r.unit === settings.unit ? 'text-muted' : 'text-ink'}>{r.unit}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
         </div>
 
         {/* ------------------------------------------------------ hero + list */}
@@ -346,6 +326,27 @@ export default function App() {
         {/* ---------------------------------------------------------- tools */}
         <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
           <WarmupPanel input={input} unit={settings.unit} target={settings.target} onPick={pick} />
+
+          {settings.lastWeights.length > 0 && (
+            <section className="card px-4 py-3" aria-label="Recent weights">
+              <SectionHeader icon={<ClockIcon />} tone="sky" className="mb-2.5">
+                Recent
+              </SectionHeader>
+              <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {settings.lastWeights.map((r) => (
+                  <button
+                    key={`${r.weight}-${r.unit}`}
+                    className="chip tabular-nums"
+                    onClick={() => pickWeight(r.weight, r.unit)}
+                    title={r.unit === settings.unit ? undefined : `Switches to ${r.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
+                  >
+                    <span className="font-semibold">{fmt(r.weight)}</span>
+                    <span className={r.unit === settings.unit ? 'text-muted' : 'text-ink'}>{r.unit}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
           <footer className="px-1 pb-6 text-xs text-muted gym-hide">
             <p>
               Plate geometry from Eleiko competition specs and the Metcon Group PH bumper range — 450 mm, 50.4 mm insert,
