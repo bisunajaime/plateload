@@ -98,7 +98,7 @@ export default function App() {
 
       <main id="main" className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-5 lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:items-start">
         {/* ------------------------------------------------------- controls */}
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="order-1 flex min-w-0 flex-col gap-4">
           <WeightInput
             value={settings.target}
             unit={settings.unit}
@@ -242,7 +242,8 @@ export default function App() {
         </div>
 
         {/* ------------------------------------------------------ hero + list */}
-        <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        {/* On a phone this drops below the tools; on desktop it is the right-hand column. */}
+        <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <section className="card platform-grain overflow-hidden" aria-label="Loaded barbell">
             <div className="hide-scroll overflow-x-auto">
               <BarbellSVG
@@ -324,7 +325,7 @@ export default function App() {
         </div>
 
         {/* ---------------------------------------------------------- tools */}
-        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
+        <div className="order-2 flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
           <WarmupPanel input={input} unit={settings.unit} target={settings.target} onPick={pick} />
 
           {settings.lastWeights.length > 0 && (

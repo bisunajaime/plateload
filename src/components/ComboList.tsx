@@ -13,7 +13,8 @@ const MODES: { value: RankMode; label: string; title: string }[] = [
   { value: 'all', label: 'All', title: 'Every combination' },
 ]
 
-const PAGE = 24
+// Five at a time: enough to choose from, short enough to scan on a phone.
+const PAGE = 5
 
 export function ComboList({
   combos,
