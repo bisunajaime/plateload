@@ -82,6 +82,14 @@ export default function App() {
     setFavOpen(true)
   }
 
+  const saveFavorite = (e: React.FormEvent) => {
+    e.preventDefault()
+    setFavOpen(false)
+    update({
+      favorites: [...settings.favorites, { label: favLabel.trim(), weight: settings.target, unit: settings.unit }],
+    })
+  }
+
   const animate = !prefersReducedMotion()
 
   return (
@@ -383,47 +391,34 @@ export default function App() {
         title="Save favourite"
         footer={
           <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={() => setFavOpen(false)}>
+            <button type="button" className="btn btn-ghost" onClick={() => setFavOpen(false)}>
               Cancel
             </button>
-            <button
-              className="btn btn-primary px-5"
-              onClick={() => {
-                update({
-                  favorites: [
-                    ...settings.favorites,
-                    { label: favLabel.trim(), weight: settings.target, unit: settings.unit },
-                  ],
-                })
-                setFavOpen(false)
-              }}
-            >
+            {/* Submits the form below, so the button, Enter and a phone keyboard's
+                Go key all take the same path and the sheet closes on the first tap. */}
+            <button type="submit" form="save-favourite" className="btn btn-primary px-5">
               Save
             </button>
           </div>
         }
       >
-        <label className="flex flex-col gap-2">
-          <span className="label">Name</span>
+        <form id="save-favourite" onSubmit={saveFavorite} className="flex flex-col gap-2">
+          <label className="label" htmlFor="favourite-name">
+            Name
+          </label>
           <input
+            id="favourite-name"
             className="btn w-full justify-start px-4"
             placeholder="Squat"
+            enterKeyHint="done"
             value={favLabel}
             onChange={(e) => setFavLabel(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                update({
-                  favorites: [...settings.favorites, { label: favLabel.trim(), weight: settings.target, unit: settings.unit }],
-                })
-                setFavOpen(false)
-              }
-            }}
           />
           <span className="text-xs text-muted">
             Pins {fmt(settings.target)} {settings.unit} for next time. Two lifts can share a weight — the name is
             how you tell them apart.
           </span>
-        </label>
+        </form>
       </Sheet>
     </div>
   )
