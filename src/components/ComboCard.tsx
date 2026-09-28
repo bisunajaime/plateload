@@ -14,6 +14,7 @@ export interface ComboCardProps {
   onSelect: () => void
 }
 
+/** One way to load the bar, as a row you can pick. */
 export const ComboCard = memo(function ComboCard({
   combo,
   plates,
@@ -23,64 +24,46 @@ export const ComboCard = memo(function ComboCard({
   selected,
   onSelect,
 }: ComboCardProps) {
-  const fill = Math.min(1, combo.sleeveMm / sleeveMm)
-  const list = combo.plates.length ? platesCompact(combo.plates) : 'Bare bar'
+  const list = combo.plates.length ? platesCompact(combo.plates) : 'Empty bar'
+  const details = [
+    `${combo.plateCount} plate${combo.plateCount === 1 ? '' : 's'}`,
+    combo.changeCount > 0 ? `${combo.changeCount} change` : null,
+    `${Math.round(combo.sleeveMm)} of ${sleeveMm} mm`,
+  ].filter(Boolean)
 
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`card w-full overflow-hidden p-3 text-left transition active:scale-[0.995] ${
-        selected ? 'ring-2 ring-ink' : 'hover:bg-surface2'
+      className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition sm:px-4 ${
+        selected ? 'bg-surface2/70' : 'hover:bg-surface2/40'
       }`}
     >
-      <div className="flex items-center gap-3">
-        <div className="h-24 w-28 shrink-0 rounded-xl bg-surface2/70 p-1.5 sm:h-28 sm:w-44">
-          <SleeveThumb
-            plates={plates}
-            combo={combo}
-            collarKind={collarKind}
-            collarWidthMm={collarWidthMm}
-          />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          {/* "Each side" lives in the list heading — it is the same on every card. */}
-          <div className="truncate text-lg font-semibold tabular-nums">{list}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted tabular-nums">
-            <span className="whitespace-nowrap">
-              {combo.plateCount} plate{combo.plateCount === 1 ? '' : 's'}
-              {combo.changeCount > 0 && ` · ${combo.changeCount} change`}
-            </span>
-            {combo.competitionLegal && (
-              <span className="rounded-full bg-ink/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink">
-                Competition
-              </span>
-            )}
-            {combo.overCapacity && (
-              <span className="rounded-full bg-bad/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-bad">
-                Overfull
-              </span>
-            )}
-          </div>
-          {/* The fill bar and its figure sit together, so the bar reads as the sleeve. */}
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface2" aria-hidden="true">
-              <div
-                className={`h-full rounded-full ${combo.overCapacity ? 'bg-bad' : fill > 0.85 ? 'bg-ink' : 'bg-steel'}`}
-                style={{ width: `${fill * 100}%` }}
-              />
-            </div>
-            <span
-              className={`shrink-0 whitespace-nowrap text-xs tabular-nums ${combo.overCapacity ? 'font-semibold text-bad' : 'text-muted'}`}
-              aria-label={`${Math.round(combo.sleeveMm)} of ${sleeveMm} millimetres of sleeve used`}
-            >
-              {Math.round(combo.sleeveMm)}/{sleeveMm} mm
-            </span>
-          </div>
-        </div>
-      </div>
+      <span className="h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2/70 p-1">
+        <SleeveThumb plates={plates} combo={combo} collarKind={collarKind} collarWidthMm={collarWidthMm} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold tabular-nums">{list}</span>
+        <span className={`block truncate text-xs tabular-nums ${combo.overCapacity ? 'font-semibold text-bad' : 'text-muted'}`}>
+          {combo.overCapacity ? 'Too wide for the sleeve · ' : ''}
+          {details.join(' · ')}
+          {combo.competitionLegal && !combo.overCapacity ? ' · competition' : ''}
+        </span>
+      </span>
+      {/* A radio-style mark: the row you picked is the bar above. */}
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+          selected ? 'border-ink bg-ink text-bg' : 'border-line'
+        }`}
+        aria-hidden="true"
+      >
+        {selected && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12.5 10 17l9-10" />
+          </svg>
+        )}
+      </span>
     </button>
   )
 })

@@ -1,66 +1,59 @@
 import type { Brand } from '../data/plates'
 import type { Settings } from '../lib/settings'
-import { GearIcon, LockIcon, Segmented } from './ui'
+import { GearIcon, Segmented } from './ui'
 
+/**
+ * Three things: where you are, which plates you are loading, and setup. The
+ * brand carries its unit — Eleiko is kilos, Metcon is pounds — so the switch
+ * says both and there is no separate unit control to misread.
+ */
 export function Header({
   settings,
-  update,
   setBrand,
   onSettings,
 }: {
   settings: Settings
-  update: (p: Partial<Settings>) => void
   setBrand: (b: Brand) => void
   onSettings: () => void
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2 sm:px-5 sm:py-3">
+    <header className="sticky top-0 z-30 border-b border-line/70 bg-bg/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2 sm:px-5">
         <a href="#main" className="sr-only focus:not-sr-only focus:btn">
           Skip to content
         </a>
-        {/* The wordmark costs a phone header more than it earns — controls first. */}
-        <div className="hidden items-baseline gap-2 sm:mr-auto sm:flex">
-          <span className="font-display text-lg font-semibold tracking-tight">PlateLoad</span>
-          <span className="hidden text-xs text-muted lg:inline gym-hide">Load any weight. See every combination.</span>
-        </div>
+        <a href="/" className="mr-auto flex min-h-[44px] items-center gap-2 rounded-lg pr-2 font-display text-[17px] font-semibold tracking-tight">
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="hidden min-[400px]:inline">PlateLoad</span>
+        </a>
 
         <Segmented
           value={settings.brand}
           onChange={setBrand}
-          label="Brand"
+          label="Plates"
           options={[
-            { value: 'eleiko', label: 'Eleiko', title: 'Eleiko — kilos' },
-            { value: 'metcon', label: 'Metcon', title: 'Metcon — pounds' },
+            {
+              value: 'eleiko',
+              label: (
+                <>
+                  Eleiko <span className="opacity-60">kg</span>
+                </>
+              ),
+              title: 'Eleiko plates, in kilos',
+            },
+            {
+              value: 'metcon',
+              label: (
+                <>
+                  Metcon <span className="opacity-60">lb</span>
+                </>
+              ),
+              title: 'Metcon plates, in pounds',
+            },
           ]}
         />
 
-        {/* The brand fixes the unit: Eleiko is a kilo brand, Metcon is sold in pounds. */}
-        <span
-          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-line bg-surface2 px-3 text-sm font-semibold text-ink"
-          title={
-            settings.brand === 'eleiko'
-              ? 'Eleiko plates are kilos. Switch to Metcon for pounds.'
-              : 'Metcon plates are pounds. Switch to Eleiko for kilos.'
-          }
-        >
-          <LockIcon />
-          {settings.unit}
-        </span>
-
-        {settings.brand === 'eleiko' && (
-          <Segmented
-            value={settings.plateStyle === 'calibrated-steel' ? 'calibrated-steel' : 'bumper'}
-            onChange={(plateStyle) => update({ plateStyle })}
-            label="Eleiko plate style"
-            options={[
-              { value: 'bumper', label: 'Bumper' },
-              { value: 'calibrated-steel', label: 'Steel' },
-            ]}
-          />
-        )}
-
-        <button type="button" className="btn min-h-[40px] px-3" onClick={onSettings} aria-label="Setup: bar, collars, inventory">
+        <button type="button" className="btn btn-ghost h-11 w-11 px-0" onClick={onSettings} aria-label="Setup: bar, collars, plates and display">
           <GearIcon />
         </button>
       </div>

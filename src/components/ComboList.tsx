@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { CollarKind, PlateDef } from '../data/plates'
 import type { Combo, RankMode } from '../lib/combinations'
 import { ComboCard } from './ComboCard'
-import { ChevronIcon, Segmented } from './ui'
 
 const MODES: { value: RankMode; label: string; title: string }[] = [
   { value: 'recommended', label: 'Recommended', title: 'Fewest plates, loaded competition style' },
@@ -13,12 +12,8 @@ const MODES: { value: RankMode; label: string; title: string }[] = [
   { value: 'all', label: 'All', title: 'Every combination' },
 ]
 
-// The two a first-timer can tell apart. The other four are a power-user choice
-// and stay behind the options disclosure until asked for.
-const PRIMARY: RankMode[] = ['recommended', 'fewest']
-
-// Five at a time: enough to choose from, short enough to scan on a phone.
-const PAGE = 5
+// Four at a time: enough to choose from, short enough to scan on a phone.
+const PAGE = 4
 
 export function ComboList({
   combos,
@@ -46,7 +41,6 @@ export function ComboList({
   totalFound: number
 }) {
   const [shown, setShown] = useState(PAGE)
-  const [open, setOpen] = useState(false)
   // Reset paging when the result set changes — derived during render, no effect.
   const listKey = `${mode}:${combos.length}:${combos[0]?.id ?? ''}`
   const [prevKey, setPrevKey] = useState(listKey)
@@ -55,49 +49,37 @@ export function ComboList({
     setShown(PAGE)
   }
 
-  // A non-primary mode always rides along in the collapsed set, so the active
-  // ranking is never hidden and closing the disclosure never changes the order.
-  const visible = open ? MODES : MODES.filter((m) => PRIMARY.includes(m.value) || m.value === mode)
   const active = MODES.find((m) => m.value === mode)
-  const choosable = totalFound > 1
+  // One way to load it is already the bar above — a list of one is noise.
+  if (totalFound <= 1) return null
 
   return (
-    <section aria-label="Combinations" className="flex flex-col gap-3">
-      {/* The answer leads. The count is the way in to the rest, not the headline. */}
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">
-          How to load it <span className="font-medium normal-case tracking-normal">· each side</span>
-        </h2>
-        {choosable && (
-          <button
-            type="button"
-            className="-mr-1 inline-flex min-h-[36px] shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted transition hover:bg-surface2"
-            aria-expanded={open}
-            onClick={() => setOpen((o) => !o)}
+    <section aria-labelledby="ways-heading">
+      <div className="mb-2 flex items-end justify-between gap-3 px-1">
+        <div className="min-w-0">
+          <h2 id="ways-heading" className="section-title">
+            {totalFound} ways to load it
+          </h2>
+          {active && <p className="truncate text-xs text-muted">{active.title}</p>}
+        </div>
+        <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted">
+          <span>Sort</span>
+          <select
+            className="sort-select"
+            value={mode}
+            onChange={(e) => onMode(e.target.value as RankMode)}
+            aria-label="Sort combinations"
           >
-            <span className="tabular-nums">{totalFound} options</span>
-            <ChevronIcon open={open} />
-          </button>
-        )}
+            {MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {choosable && (
-        <div>
-          <div className="hide-scroll -mx-1 overflow-x-auto px-1">
-            <Segmented
-              value={mode}
-              onChange={onMode}
-              label="Ranking"
-              className="w-max"
-              options={visible.map((m) => ({ value: m.value, label: m.label, title: m.title }))}
-            />
-          </div>
-          {/* Titles are hover-only, and this is a phone app — say it out loud instead. */}
-          {open && active && <p className="mt-2 px-1 text-xs text-muted">{active.title}.</p>}
-        </div>
-      )}
-
-      <ul className="flex flex-col gap-2">
+      <ul className="card divide-y divide-line overflow-hidden">
         {combos.slice(0, shown).map((c) => (
           <li key={c.id}>
             <ComboCard
@@ -111,16 +93,21 @@ export function ComboList({
             />
           </li>
         ))}
+        {combos.length > shown && (
+          <li>
+            <button
+              type="button"
+              className="flex min-h-[44px] w-full items-center justify-center text-sm font-medium text-muted transition hover:bg-surface2/40 hover:text-ink"
+              onClick={() => setShown((s) => s + PAGE)}
+            >
+              Show {Math.min(PAGE, combos.length - shown)} more
+            </button>
+          </li>
+        )}
       </ul>
-
-      {combos.length > shown && (
-        <button type="button" className="btn" onClick={() => setShown((s) => s + PAGE)}>
-          Show {Math.min(PAGE, combos.length - shown)} more
-        </button>
-      )}
-      {truncated && open && (
-        <p className="text-xs text-muted">
-          Showing the best {combos.length}. More combinations exist — a ranking mode narrows them down.
+      {truncated && combos.length <= shown && (
+        <p className="mt-2 px-1 text-xs text-muted">
+          Showing the best {combos.length}. Another sort brings up different ones.
         </p>
       )}
     </section>

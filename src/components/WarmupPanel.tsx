@@ -3,8 +3,7 @@ import type { Unit } from '../data/plates'
 import type { SolveInput } from '../lib/combinations'
 import { convert, fmt } from '../lib/format'
 import { DEFAULT_RAMP, percentTable, warmupPlan } from '../lib/warmup'
-import { RAIL } from './rail'
-import { ChevronIcon, FlameIcon, Segmented } from './ui'
+import { ChevronIcon, Segmented } from './ui'
 
 type Tab = 'warmup' | 'percent' | 'convert'
 
@@ -75,17 +74,17 @@ export function WarmupPanel({
   }
 
   return (
-    <details className={`card p-4 ${RAIL.flame}`} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl [&::-webkit-details-marker]:hidden">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-flame/15 text-flame" aria-hidden="true">
-          <FlameIcon size={16} />
+    <details className="card group p-4" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="-m-4 flex min-h-[56px] cursor-pointer list-none items-center gap-3 rounded-2xl p-4 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <h2 className="section-title">Warm-up &amp; percentages</h2>
+          {!open && <p className="text-xs text-muted">Ramp sets, % of your max, kg ⇄ lb</p>}
         </span>
-        <h2 className="label">Training tools</h2>
-        <span className="ml-auto shrink-0 text-muted">
+        <span className="shrink-0 text-muted">
           <ChevronIcon open={open} />
         </span>
       </summary>
-      <div className="hide-scroll -mx-1 mt-3 overflow-x-auto px-1 pb-2">
+      <div className="hide-scroll -mx-1 mt-4 overflow-x-auto px-1 pb-2">
         <Segmented
           value={tab}
           onChange={setTab}

@@ -1,16 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { BarbellSVG } from './components/BarbellSVG'
 import { ComboList } from './components/ComboList'
-import { EmptyState } from './components/EmptyState'
 import { Header } from './components/Header'
+import { LoadCard } from './components/LoadCard'
 import { MiniBar } from './components/MiniBar'
 import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
-import { WeightInput } from './components/WeightInput'
-import { RAIL } from './components/rail'
-import { CopyIcon, ScaleIcon, SectionHeader, Sheet, StarIcon, TagIcon, XIcon, ZoomIcon } from './components/ui'
+import { YourWeights } from './components/YourWeights'
+import { Sheet } from './components/ui'
 import { COLLARS } from './data/plates'
-import { comboTotal, smallestIncrement, solve, type Combo } from './lib/combinations'
+import { comboTotal, solve, type Combo } from './lib/combinations'
 import { fmt } from './lib/format'
 import { buildSolveInput, resolveLoadout } from './lib/settings'
 import { nextJump } from './lib/warmup'
@@ -24,7 +22,6 @@ export default function App() {
   const [favLabel, setFavLabel] = useState('')
   const [removing, setRemoving] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [zoom, setZoom] = useState(1)
   const [copied, setCopied] = useState(false)
 
   const loadout = useMemo(() => resolveLoadout(settings), [settings])
@@ -32,14 +29,13 @@ export default function App() {
   const result = useMemo(() => solve(input, settings.mode), [input, settings.mode])
   const jumps = useMemo(() => nextJump(input, settings.target), [input, settings.target])
 
-  const step = smallestIncrement(loadout.denoms, settings.unit)
-  const quickSteps = settings.unit === 'kg' ? [1.25, 2.5, 5, 10] : [2.5, 5, 10, 45]
+  // The jumps a lifter actually makes between sets.
+  const quickSteps = settings.unit === 'kg' ? [2.5, 5, 10, 20] : [5, 10, 25, 45]
 
   const selected: Combo | null = useMemo(() => {
     if (!result.ok || result.combos.length === 0) return null
     return result.combos.find((c) => c.id === selectedId) ?? result.combos[0]
   }, [result, selectedId])
-
 
   const collarKind = settings.collars ? settings.collarKind : null
   const collarWidth = COLLARS[settings.collarKind].widthMm
@@ -95,8 +91,8 @@ export default function App() {
 
   const animate = !prefersReducedMotion()
 
-  // A thumbnail of the load stands in for the hero bar once you have scrolled
-  // away from it — but not over the combination list, whose cards already
+  // A thumbnail of the load stands in for the card once you have scrolled
+  // away from it — but not over the combination list, whose rows already
   // draw every sleeve, and not before you have scrolled at all.
   const heroRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -107,78 +103,56 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      <Header settings={settings} update={update} setBrand={setBrand} onSettings={() => setSetupOpen(true)} />
+      <Header settings={settings} setBrand={setBrand} onSettings={() => setSetupOpen(true)} />
 
-      <main id="main" className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-5 lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:items-start">
-        {/* --------------------------------------------------------- target */}
-        <div className="order-1 flex min-w-0 flex-col gap-4">
-          <WeightInput
-            value={settings.target}
+      {/* One column on a phone, the answer first. On desktop the answer stays
+          pinned on the left while everything optional scrolls on the right. */}
+      <main
+        id="main"
+        className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-3 pb-10 pt-4 sm:px-5 sm:pt-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start lg:gap-8"
+      >
+        <div className="lg:sticky lg:top-[76px]">
+          <LoadCard
+            ref={heroRef}
+            target={settings.target}
             unit={settings.unit}
-            step={step}
-            loadable={result.ok}
-            onChange={setTarget}
-            onCommit={rememberWeight}
+            result={result}
+            combo={selected}
+            bar={loadout.bar}
+            plates={loadout.plates}
+            barWeight={loadout.barWeight}
+            collarWeight={loadout.collarWeight}
+            collarKind={collarKind}
+            collarWidthMm={collarWidth}
+            base={loadout.base}
+            showLabels={settings.showLabels}
+            closeUp={settings.closeUp}
+            animate={animate}
+            down={jumps.down}
+            up={jumps.up}
             quickSteps={quickSteps}
-            showHint={settings.lastWeights.length === 0}
+            onSet={pick}
+            onToggleCloseUp={() => update({ closeUp: !settings.closeUp })}
+            onSave={addFavorite}
+            onCopy={copy}
+            copied={copied}
+            changeOff={!settings.includeChange}
+            onEnableChange={() => update({ includeChange: true })}
+            onOpenSetup={() => setSetupOpen(true)}
           />
         </div>
 
-        {/* ------------------------------------------------------ hero + list */}
-        {/* The answer comes straight after the target on a phone; on desktop it is the right-hand column. */}
-        <div className="order-2 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <section
-            ref={heroRef}
-            className="card platform-grain scroll-mt-20 overflow-hidden"
-            aria-label="Loaded barbell"
-          >
-            <div className={`hide-scroll flex overflow-x-auto ${zoom > 1 ? '' : 'justify-center'}`}>
-              <BarbellSVG
-                bar={loadout.bar}
-                plates={loadout.plates}
-                combo={selected}
-                collarKind={collarKind}
-                collarWidthMm={collarWidth}
-                unit={settings.unit}
-                showLabels={settings.showLabels}
-                closeUp={settings.closeUp}
-                animate={animate}
-                zoom={zoom}
-                maxHeightPx={360}
-                className="block h-auto"
-              />
-            </div>
-            <div className="hide-scroll flex items-center gap-2 overflow-x-auto border-t border-line px-3 py-2">
-              <button
-                className="chip"
-                aria-pressed={settings.closeUp}
-                onClick={() => update({ closeUp: !settings.closeUp })}
-                title="Zoom to one sleeve"
-              >
-                <ZoomIcon />
-                Sleeve
-              </button>
-              <button
-                className="chip"
-                aria-pressed={settings.showLabels}
-                onClick={() => update({ showLabels: !settings.showLabels })}
-              >
-                <TagIcon />
-                Labels
-              </button>
-              <button className="chip" onClick={() => setZoom((z) => (z >= 2.4 ? 1 : z + 0.7))} title="Magnify the bar">
-                {zoom > 1 ? `${zoom.toFixed(1)}×` : 'Zoom'}
-              </button>
-              {selected && (
-                <span className="ml-auto shrink-0 pl-2 text-xs text-muted tabular-nums">
-                  {Math.round(selected.sleeveMm)} / {loadout.sleeveMm} mm
-                </span>
-              )}
-            </div>
-          </section>
+        <div className="flex min-w-0 flex-col gap-6">
+          <YourWeights
+            favorites={favorites}
+            recents={settings.lastWeights}
+            unit={settings.unit}
+            onPick={pickWeight}
+            onRemove={setRemoving}
+          />
 
-          <div ref={listRef} className="min-w-0">
-            {result.ok ? (
+          {result.ok && (
+            <div ref={listRef}>
               <ComboList
                 combos={result.combos}
                 mode={settings.mode}
@@ -195,202 +169,15 @@ export default function App() {
                 truncated={result.truncated}
                 totalFound={result.totalFound}
               />
-            ) : (
-              <EmptyState
-                reason={result.reason}
-                target={settings.target}
-                unit={settings.unit}
-                base={loadout.base}
-                nearestBelow={result.nearestBelow}
-                nearestAbove={result.nearestAbove}
-                onPick={pick}
-                changeOff={!settings.includeChange}
-                onEnableChange={() => update({ includeChange: true })}
-                onOpenSetup={() => setSetupOpen(true)}
-                smallestStep={result.smallestStep}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* ------------------------------------------- breakdown, saved, tools */}
-        {/* Below the answer on a phone; under the target in the left column on desktop. */}
-        <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
-          {/* live breakdown */}
-          <section className={`card px-4 py-3 ${RAIL.steel}`} aria-label="Weight breakdown">
-            <SectionHeader icon={<ScaleIcon />} tone="steel">
-              Breakdown
-            </SectionHeader>
-
-            <dl className="mt-3 grid grid-cols-3 gap-2">
-              {[
-                { k: 'Bar', v: fmt(loadout.barWeight), tone: '' },
-                { k: 'Collars', v: fmt(settings.collars ? loadout.collarWeight * 2 : 0), tone: '' },
-                {
-                  k: 'Plates',
-                  v: fmt(Math.max(0, result.platesTotal)),
-                  tone: result.ok ? 'text-good' : 'text-bad',
-                },
-              ].map((cell) => (
-                <div key={cell.k} className="rounded-xl bg-surface2/70 px-2 py-2 text-center">
-                  <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">{cell.k}</dt>
-                  <dd className={`text-base font-semibold tabular-nums ${cell.tone}`}>{cell.v}</dd>
-                </div>
-              ))}
-            </dl>
-
-            <div className="mt-2.5 border-t border-line pt-2.5">
-              <span className="text-xs text-muted">
-                {fmt(result.perSide > 0 ? result.perSide : 0)} {settings.unit} a side · steps of {fmt(step)}
-              </span>
             </div>
-
-            {/* Loadable weights near this one — a scrolling row, never wrapping. */}
-            {(jumps.down != null || jumps.up != null) && (
-              <h3 className="label mt-3">Nearby loadable</h3>
-            )}
-            <div className="hide-scroll -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-0.5">
-              {jumps.down != null && (
-                <button className="chip shrink-0" onClick={() => pick(jumps.down!)}>
-                  ↓ {fmt(jumps.down)}
-                </button>
-              )}
-              {jumps.up != null && (
-                <button className="chip shrink-0" onClick={() => pick(jumps.up!)}>
-                  ↑ {fmt(jumps.up)}
-                </button>
-              )}
-              {jumps.competitionUp != null && jumps.competitionUp !== jumps.up && (
-                <button
-                  className="chip shrink-0"
-                  onClick={() => pick(jumps.competitionUp!)}
-                  title="Next competition increment"
-                >
-                  ↑ {fmt(jumps.competitionUp)} competition
-                </button>
-              )}
-            </div>
-
-            {/* Actions on this weight, kept apart from the weights you can jump to. */}
-            <div className="mt-3 flex overflow-hidden rounded-xl border border-line" role="group" aria-label="Actions">
-              <button
-                type="button"
-                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 text-sm font-medium transition hover:bg-surface2"
-                onClick={addFavorite}
-                title="Save as favourite"
-              >
-                <span className="text-gold">
-                  <StarIcon size={16} />
-                </span>
-                Save
-              </button>
-              <button
-                type="button"
-                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 border-l border-line text-sm font-medium transition hover:bg-surface2"
-                onClick={copy}
-                title="Copy a summary"
-              >
-                <CopyIcon />
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-          </section>
-
-          {/* Starred and recent are the same thought — weights you have used —
-              so they share a card and one colour instead of bracketing the tools. */}
-          {(favorites.length > 0 || settings.lastWeights.length > 0) && (
-            <section className={`card overflow-hidden ${RAIL.gold}`} aria-label="Your weights">
-              <SectionHeader
-                icon={<StarIcon size={16} filled />}
-                tone="gold"
-                className="px-4 pb-2.5 pt-3"
-                right={
-                  favorites.length > 0 ? (
-                    <span className="text-xs text-muted tabular-nums">{favorites.length} saved</span>
-                  ) : undefined
-                }
-              >
-                Your weights
-              </SectionHeader>
-              {favorites.length > 0 && (
-              <ul className="max-h-64 divide-y divide-line overflow-y-auto border-t border-line">
-                {favorites.map((f) => {
-                  const foreign = f.unit !== settings.unit
-                  return (
-                    <li key={f.index} className="flex items-stretch">
-                      <button
-                        type="button"
-                        className="flex min-h-[52px] flex-1 items-center gap-3 px-4 text-left transition hover:bg-surface2"
-                        onClick={() => pickWeight(f.weight, f.unit)}
-                        title={foreign ? `Switches to ${f.unit === 'lb' ? 'Metcon' : 'Eleiko'}` : undefined}
-                      >
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                          {f.label || <span className="text-muted">Unnamed</span>}
-                        </span>
-                        <span className="shrink-0 text-sm tabular-nums">
-                          <span className="font-semibold">{fmt(f.weight)}</span>{' '}
-                          <span className={foreign ? 'text-ink' : 'text-muted'}>{f.unit}</span>
-                        </span>
-                        {foreign && (
-                          <span className="shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
-                            {f.unit === 'lb' ? 'Metcon' : 'Eleiko'}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className="flex min-h-[52px] w-12 shrink-0 items-center justify-center border-l border-line text-muted transition hover:bg-surface2 hover:text-bad"
-                        onClick={() => setRemoving(f.index)}
-                        aria-label={`Remove favourite ${f.label || 'unnamed'} — ${fmt(f.weight)} ${f.unit}`}
-                        title="Remove"
-                      >
-                        <XIcon />
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-              )}
-
-              {settings.lastWeights.length > 0 && (
-                <div className="border-t border-line px-4 py-3">
-                  <h3 className="label mb-2">Recent</h3>
-                  <div className="hide-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                    {settings.lastWeights.map((r) => (
-                      <button
-                        key={`${r.weight}-${r.unit}`}
-                        className="chip tabular-nums"
-                        onClick={() => pickWeight(r.weight, r.unit)}
-                        title={r.unit === settings.unit ? undefined : `Switches to ${r.unit === 'lb' ? 'Metcon' : 'Eleiko'}`}
-                      >
-                        <span className="font-semibold">{fmt(r.weight)}</span>
-                        <span className={r.unit === settings.unit ? 'text-muted' : 'text-ink'}>{r.unit}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
           )}
 
-          <WarmupPanel
-            input={input}
-            unit={settings.unit}
-            target={settings.target}
-            onPick={pick}
-            onPickStep={setTarget}
-          />
+          <WarmupPanel input={input} unit={settings.unit} target={settings.target} onPick={pick} onPickStep={setTarget} />
 
-          <footer className="px-1 pb-6 text-xs text-muted gym-hide">
+          <footer className="px-1 text-xs leading-relaxed text-muted gym-hide">
             <p>
-              Plate geometry from Eleiko competition specs and the Metcon Group PH bumper range — 450 mm, 50.4 mm insert,
-              90A, gloss–matte–gloss.
-            </p>
-            <p className="mt-1">
-              {selected ? `${fmt(comboTotal(selected, input))} ${settings.unit} on the bar.` : 'Nothing loaded.'} Works
-              offline once installed.
-            </p>
-            <p className="mt-1">
+              {selected ? `${fmt(comboTotal(selected, input))} ${settings.unit} on the bar. ` : ''}Plate geometry from
+              Eleiko competition specs and the Metcon Group PH bumper range. Works offline once installed.{' '}
               <a href="/" className="underline decoration-line underline-offset-2 hover:text-ink">
                 About PlateLoad
               </a>

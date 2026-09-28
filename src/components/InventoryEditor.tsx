@@ -13,7 +13,7 @@ import {
 import { fmt } from '../lib/format'
 import { collarWeightOf, type Settings } from '../lib/settings'
 import { ThemeToggle } from './ThemeToggle'
-import { Sheet, Toggle } from './ui'
+import { Segmented, Sheet, Toggle } from './ui'
 
 export function SettingsSheet({
   open,
@@ -66,6 +66,31 @@ export function SettingsSheet({
               hint="Bigger type, higher contrast, secondary controls hidden — for reading the bar from a couple of metres away"
             />
           </div>
+          <div className="border-t border-line pt-1">
+            <Toggle
+              checked={settings.showLabels}
+              onChange={(showLabels) => update({ showLabels })}
+              label="Weights on the drawing"
+              hint="Print each plate’s weight above it on the bar"
+            />
+          </div>
+          {settings.brand === 'eleiko' && (
+            <div className="flex items-center justify-between gap-4 border-t border-line py-2">
+              <span className="flex flex-col">
+                <span className="text-sm font-medium text-ink">Eleiko plates</span>
+                <span className="text-xs text-muted">Rubber bumpers or calibrated steel discs</span>
+              </span>
+              <Segmented
+                value={settings.plateStyle === 'calibrated-steel' ? 'calibrated-steel' : 'bumper'}
+                onChange={(plateStyle) => update({ plateStyle })}
+                label="Eleiko plate style"
+                options={[
+                  { value: 'bumper', label: 'Bumper' },
+                  { value: 'calibrated-steel', label: 'Steel' },
+                ]}
+              />
+            </div>
+          )}
         </section>
 
         {/* ------------------------------------------------------------- bar */}

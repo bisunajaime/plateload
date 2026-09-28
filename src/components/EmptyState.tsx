@@ -2,6 +2,7 @@ import type { Unit } from '../data/plates'
 import type { SolveReason } from '../lib/combinations'
 import { fmt } from '../lib/format'
 
+/** Stands in for the plates when the target can't be built — and offers the nearest that can. */
 export function EmptyState({
   reason,
   target,
@@ -13,7 +14,6 @@ export function EmptyState({
   changeOff,
   onEnableChange,
   onOpenSetup,
-  smallestStep,
 }: {
   reason: SolveReason
   target: number
@@ -25,63 +25,42 @@ export function EmptyState({
   changeOff: boolean
   onEnableChange: () => void
   onOpenSetup: () => void
-  smallestStep: number | null
 }) {
-  const headline =
+  const message =
     reason === 'below-bar'
-      ? `${fmt(target)} ${unit} is lighter than the bar`
+      ? `Lighter than the bar — bar and collars weigh ${fmt(base)} ${unit}.`
       : reason === 'no-plates'
-        ? 'No plates in the inventory'
-        : `${fmt(target)} ${unit} isn’t reachable`
-
-  const body =
-    reason === 'below-bar'
-      ? `Bar and collars already weigh ${fmt(base)} ${unit}.`
-      : reason === 'no-plates'
-        ? 'Add some plates in Setup and the combinations appear here.'
+        ? 'No plates in your inventory yet.'
         : changeOff
-          ? 'Bumpers only means big jumps. Change plates would fill the gaps.'
-          : 'Your inventory can’t make that number in equal halves.'
+          ? `Can’t make ${fmt(target)} ${unit} with bumpers alone.`
+          : `Your plates can’t make ${fmt(target)} ${unit} evenly.`
 
   return (
-    <section className="card flex flex-col gap-4 p-5 text-center fade-up" aria-live="polite">
-      <div>
-        <h2 className="font-display text-xl font-semibold">{headline}</h2>
-        <p className="mt-1 text-sm text-muted">{body}</p>
-      </div>
-
+    <div className="flex flex-col items-center gap-3 text-center fade-up">
+      <p className="text-sm font-medium text-bad">{message}</p>
       {(nearestBelow != null || nearestAbove != null) && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           {nearestBelow != null && (
-            <button type="button" className="btn px-5" onClick={() => onPick(nearestBelow)}>
-              ↓ {fmt(nearestBelow)} {unit}
+            <button type="button" className="chip" onClick={() => onPick(nearestBelow)}>
+              Load {fmt(nearestBelow)} {unit}
             </button>
           )}
           {nearestAbove != null && (
-            <button type="button" className="btn px-5" onClick={() => onPick(nearestAbove)}>
-              ↑ {fmt(nearestAbove)} {unit}
+            <button type="button" className="chip" onClick={() => onPick(nearestAbove)}>
+              Load {fmt(nearestAbove)} {unit}
             </button>
           )}
         </div>
       )}
-
-      <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-        {changeOff ? (
-          <button type="button" className="btn btn-primary px-5" onClick={onEnableChange}>
-            Turn on change plates
-          </button>
-        ) : (
-          <button type="button" className="btn px-5" onClick={onOpenSetup}>
-            Edit inventory
-          </button>
-        )}
-      </div>
-
-      {smallestStep != null && (
-        <p className="text-xs text-muted">
-          Next loadable weight above this one: {fmt(smallestStep)} {unit}.
-        </p>
-      )}
-    </section>
+      {changeOff ? (
+        <button type="button" className="text-sm font-medium text-ink underline underline-offset-4" onClick={onEnableChange}>
+          Use change plates
+        </button>
+      ) : reason === 'no-plates' || reason === 'unreachable' || reason === 'not-divisible' ? (
+        <button type="button" className="text-sm font-medium text-muted underline underline-offset-4" onClick={onOpenSetup}>
+          Edit your plates
+        </button>
+      ) : null}
+    </div>
   )
 }
