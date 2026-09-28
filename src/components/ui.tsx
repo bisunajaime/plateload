@@ -80,6 +80,7 @@ export function Sheet({
   children,
   footer,
   wide = false,
+  focusField = true,
 }: {
   open: boolean
   onClose: () => void
@@ -87,6 +88,9 @@ export function Sheet({
   children: ReactNode
   footer?: ReactNode
   wide?: boolean
+  /** Focus the first text field on open. Off where choices come first — on a
+   *  phone a focused field raises the keyboard over them. */
+  focusField?: boolean
 }) {
   const panel = useRef<HTMLDivElement>(null)
   const restore = useRef<HTMLElement | null>(null)
@@ -95,8 +99,10 @@ export function Sheet({
   // passed a fresh arrow function: tearing it down mid-typing would restore
   // focus to whatever opened the sheet after every keystroke.
   const closeRef = useRef(onClose)
+  const focusRef = useRef(focusField)
   useEffect(() => {
     closeRef.current = onClose
+    focusRef.current = focusField
   })
 
   useEffect(() => {
@@ -124,7 +130,8 @@ export function Sheet({
     // Land on the first field if the sheet has one, otherwise the first control.
     const t = window.setTimeout(() => {
       const el =
-        panel.current?.querySelector<HTMLElement>('input:not([type="checkbox"]), select, textarea') ??
+        (focusRef.current && panel.current?.querySelector<HTMLElement>('input:not([type="checkbox"]), select, textarea')) ||
+        panel.current?.querySelector<HTMLElement>('[data-sheet-body] button') ||
         panel.current?.querySelector<HTMLElement>('button')
       el?.focus()
     }, 30)
@@ -160,7 +167,9 @@ export function Sheet({
             <XIcon />
           </button>
         </header>
-        <div className="hide-scroll flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div data-sheet-body className="hide-scroll flex-1 overflow-y-auto px-5 py-4">
+          {children}
+        </div>
         {footer && <footer className="border-t border-line px-5 py-3">{footer}</footer>}
       </div>
     </div>

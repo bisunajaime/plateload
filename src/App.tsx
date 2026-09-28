@@ -3,6 +3,7 @@ import { ComboList } from './components/ComboList'
 import { Header } from './components/Header'
 import { LoadCard } from './components/LoadCard'
 import { MiniBar } from './components/MiniBar'
+import { SaveFavoriteSheet } from './components/SaveFavoriteSheet'
 import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
 import { YourWeights } from './components/YourWeights'
@@ -19,7 +20,6 @@ export default function App() {
   const { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset } = useSettings()
   const [setupOpen, setSetupOpen] = useState(false)
   const [favOpen, setFavOpen] = useState(false)
-  const [favLabel, setFavLabel] = useState('')
   const [removing, setRemoving] = useState<number | null>(null)
   // A saved weight in the other unit means the other brand's plates and bar.
   const [switchTo, setSwitchTo] = useState<{ weight: number; unit: Unit } | null>(null)
@@ -98,28 +98,7 @@ export default function App() {
 
   // The star only ever saves — two lifts can share a weight (clean 100, squat 100),
   // so removal lives in the favourites list where you can see which is which.
-  const addFavorite = () => {
-    setFavLabel('')
-    setFavOpen(true)
-  }
-
-  // Two lifts can share a weight (clean 100, squat 100), but the same name at
-  // the same weight is the same favourite twice.
-  const duplicate = settings.favorites.some(
-    (f) =>
-      f.weight === settings.target &&
-      f.unit === settings.unit &&
-      f.label.trim().toLowerCase() === favLabel.trim().toLowerCase(),
-  )
-
-  const saveFavorite = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (duplicate) return
-    setFavOpen(false)
-    update({
-      favorites: [...settings.favorites, { label: favLabel.trim(), weight: settings.target, unit: settings.unit }],
-    })
-  }
+  const addFavorite = () => setFavOpen(true)
 
   const animate = !prefersReducedMotion()
 
@@ -317,47 +296,17 @@ export default function App() {
         )}
       </Sheet>
 
-      <Sheet
+      <SaveFavoriteSheet
         open={favOpen}
         onClose={() => setFavOpen(false)}
-        title="Save favourite"
-        footer={
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn btn-ghost" onClick={() => setFavOpen(false)}>
-              Cancel
-            </button>
-            {/* Submits the form below, so the button, Enter and a phone keyboard's
-                Go key all take the same path and the sheet closes on the first tap. */}
-            <button type="submit" form="save-favourite" className="btn btn-primary px-5" disabled={duplicate}>
-              Save
-            </button>
-          </div>
-        }
-      >
-        <form id="save-favourite" onSubmit={saveFavorite} className="flex flex-col gap-2">
-          <label className="label" htmlFor="favourite-name">
-            Name
-          </label>
-          <input
-            id="favourite-name"
-            className="btn w-full justify-start px-4"
-            placeholder="Squat"
-            enterKeyHint="done"
-            value={favLabel}
-            onChange={(e) => setFavLabel(e.target.value)}
-          />
-          {duplicate && (
-            <span className="text-xs font-medium text-bad" role="status">
-              Already saved{favLabel.trim() ? ` as “${favLabel.trim()}”` : ' without a name'} at {fmt(settings.target)}{' '}
-              {settings.unit}.
-            </span>
-          )}
-          <span className="text-xs text-muted">
-            Pins {fmt(settings.target)} {settings.unit} for next time. Two lifts can share a weight — the name is
-            how you tell them apart.
-          </span>
-        </form>
-      </Sheet>
+        target={settings.target}
+        unit={settings.unit}
+        favorites={settings.favorites}
+        onSave={(label) => {
+          setFavOpen(false)
+          update({ favorites: [...settings.favorites, { label, weight: settings.target, unit: settings.unit }] })
+        }}
+      />
     </div>
   )
 }

@@ -101,6 +101,8 @@
     @apply inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line
            bg-surface px-3.5 text-sm font-medium text-ink transition hover:bg-surface2 active:scale-95;
   }
+  /* A chosen chip — ramp presets, lift names, rep maxes — reads as chosen. */
+  .chip[aria-pressed='true'] { @apply border-transparent bg-ink text-bg hover:bg-ink; }
   .label { @apply text-xs font-medium uppercase tracking-[0.14em] text-muted; }
 
   /* Quiet section headings: sentence case, no tracking, no icon tiles. */
