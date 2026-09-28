@@ -7,7 +7,7 @@ import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
 import { YourWeights } from './components/YourWeights'
 import { Sheet } from './components/ui'
-import { COLLARS } from './data/plates'
+import { COLLARS, type Unit } from './data/plates'
 import { comboTotal, solve, type Combo } from './lib/combinations'
 import { fmt } from './lib/format'
 import { buildSolveInput, resolveLoadout } from './lib/settings'
@@ -21,6 +21,8 @@ export default function App() {
   const [favOpen, setFavOpen] = useState(false)
   const [favLabel, setFavLabel] = useState('')
   const [removing, setRemoving] = useState<number | null>(null)
+  // A saved weight in the other unit means the other brand's plates and bar.
+  const [switchTo, setSwitchTo] = useState<{ weight: number; unit: Unit } | null>(null)
   // A picked combination belongs to the load it was picked for; stepping away
   // and back must not resurrect a choice made for another weight.
   const [picked, setPicked] = useState<{ load: string; id: string } | null>(null)
@@ -81,11 +83,13 @@ export default function App() {
     [setTarget, rememberWeight, settings],
   )
 
-  /** A quick jump: at least this much heavier, landing on something loadable. */
+  /** A quick jump: at least this far either way, landing on something loadable. */
   const jump = (delta: number) => {
     const want = settings.target + delta
+    if (want <= loadout.base) return setTarget(loadout.base)
     const r = solve(buildSolveInput(settings, want, 1))
-    setTarget(r.ok ? want : (r.nearestAbove ?? want))
+    const landing = r.ok ? want : delta > 0 ? r.nearestAbove : r.nearestBelow
+    setTarget(landing ?? want)
   }
 
   // Every favourite is shown whatever its unit — tapping one in the other unit
@@ -99,8 +103,18 @@ export default function App() {
     setFavOpen(true)
   }
 
+  // Two lifts can share a weight (clean 100, squat 100), but the same name at
+  // the same weight is the same favourite twice.
+  const duplicate = settings.favorites.some(
+    (f) =>
+      f.weight === settings.target &&
+      f.unit === settings.unit &&
+      f.label.trim().toLowerCase() === favLabel.trim().toLowerCase(),
+  )
+
   const saveFavorite = (e: React.FormEvent) => {
     e.preventDefault()
+    if (duplicate) return
     setFavOpen(false)
     update({
       favorites: [...settings.favorites, { label: favLabel.trim(), weight: settings.target, unit: settings.unit }],
@@ -167,7 +181,7 @@ export default function App() {
             favorites={favorites}
             recents={settings.lastWeights}
             unit={settings.unit}
-            onPick={pickWeight}
+            onPick={(weight, unit) => (unit === settings.unit ? pickWeight(weight, unit) : setSwitchTo({ weight, unit }))}
             onRemove={setRemoving}
           />
 
@@ -237,6 +251,38 @@ export default function App() {
 
 
       <Sheet
+        open={switchTo !== null}
+        onClose={() => setSwitchTo(null)}
+        title={`Switch to ${switchTo?.unit === 'lb' ? 'Metcon' : 'Eleiko'}?`}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost" onClick={() => setSwitchTo(null)}>
+              Stay on {settings.brand === 'metcon' ? 'Metcon' : 'Eleiko'}
+            </button>
+            <button
+              className="btn btn-primary px-5"
+              onClick={() => {
+                if (switchTo) pickWeight(switchTo.weight, switchTo.unit)
+                setSwitchTo(null)
+              }}
+            >
+              Switch and load
+            </button>
+          </div>
+        }
+      >
+        {switchTo && (
+          <p className="text-sm text-muted">
+            <span className="font-semibold text-ink tabular-nums">
+              {fmt(switchTo.weight)} {switchTo.unit}
+            </span>{' '}
+            is {switchTo.unit === 'lb' ? 'a Metcon pound' : 'an Eleiko kilo'} weight. Loading it switches to{' '}
+            {switchTo.unit === 'lb' ? 'Metcon' : 'Eleiko'} plates and that brand’s standard bar and collars.
+          </p>
+        )}
+      </Sheet>
+
+      <Sheet
         open={removing !== null}
         onClose={() => setRemoving(null)}
         title="Remove favourite?"
@@ -282,7 +328,7 @@ export default function App() {
             </button>
             {/* Submits the form below, so the button, Enter and a phone keyboard's
                 Go key all take the same path and the sheet closes on the first tap. */}
-            <button type="submit" form="save-favourite" className="btn btn-primary px-5">
+            <button type="submit" form="save-favourite" className="btn btn-primary px-5" disabled={duplicate}>
               Save
             </button>
           </div>
@@ -300,6 +346,12 @@ export default function App() {
             value={favLabel}
             onChange={(e) => setFavLabel(e.target.value)}
           />
+          {duplicate && (
+            <span className="text-xs font-medium text-bad" role="status">
+              Already saved{favLabel.trim() ? ` as “${favLabel.trim()}”` : ' without a name'} at {fmt(settings.target)}{' '}
+              {settings.unit}.
+            </span>
+          )}
           <span className="text-xs text-muted">
             Pins {fmt(settings.target)} {settings.unit} for next time. Two lifts can share a weight — the name is
             how you tell them apart.

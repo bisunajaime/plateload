@@ -53,6 +53,9 @@ export const LoadCard = forwardRef<
   const [typing, setTyping] = useState(false)
   const [draft, setDraft] = useState('')
   const [keypad, setKeypad] = useState(false)
+  // One row of jumps that goes either way: a second row of minus buttons
+  // doubled the controls for the less common direction.
+  const [down, setDown] = useState(false)
   const byId = useMemo(() => new Map(plates.map((p) => [p.id, p])), [plates])
 
   const buzz = () => {
@@ -236,18 +239,31 @@ export const LoadCard = forwardRef<
         </div>
 
         {/* ---------------------------------------------------- quick jumps */}
-        <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Add weight">
+        <div className="mt-4 grid grid-cols-[auto_repeat(4,minmax(0,1fr))] gap-2" role="group" aria-label="Jump by">
+          <button
+            type="button"
+            className="jump-btn w-11 text-muted"
+            onClick={() => setDown((d) => !d)}
+            aria-pressed={down}
+            aria-label={down ? 'Jumping down — switch to up' : 'Jumping up — switch to down'}
+            title={down ? 'Jumps go down' : 'Jumps go up'}
+          >
+            <span className="text-lg leading-none" aria-hidden="true">
+              {down ? '↓' : '↑'}
+            </span>
+          </button>
           {props.quickSteps.map((q) => (
             <button
               key={q}
               type="button"
               className="jump-btn"
               onClick={() => {
-                props.onJump(q)
+                props.onJump(down ? -q : q)
                 buzz()
               }}
             >
-              +{fmt(q)}
+              {down ? '−' : '+'}
+              {fmt(q)}
             </button>
           ))}
         </div>

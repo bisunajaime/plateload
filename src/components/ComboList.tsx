@@ -8,8 +8,6 @@ const MODES: { value: RankMode; label: string; title: string }[] = [
   { value: 'competition', label: 'Competition', title: 'Largest plates innermost, IWF order' },
   { value: 'fewest', label: 'Fewest', title: 'Fewest plates per side' },
   { value: 'compact', label: 'Compact', title: 'Shortest stack on the sleeve' },
-  { value: 'inventory', label: 'Use what I have', title: 'Spends the big plates first' },
-  { value: 'all', label: 'All', title: 'Every combination' },
 ]
 
 // Four at a time: enough to choose from, short enough to scan on a phone.

@@ -61,7 +61,7 @@ const sigs = (combos: Combo[]) => combos.map(sig)
 /* ------------------------------------------------------------------ tests */
 
 describe('Eleiko kg — competition platform', () => {
-  const res = solve(input({ brand: 'eleiko', unit: 'kg', target: 100, bar: 20, collarWeight: 2.5 }), 'all')
+  const res = solve(input({ brand: 'eleiko', unit: 'kg', target: 100, bar: 20, collarWeight: 2.5 }), 'fewest')
 
   it('subtracts bar and both collars', () => {
     expect(res.platesTotal).toBe(75)
@@ -91,7 +91,7 @@ describe('Eleiko kg — competition platform', () => {
 describe('Metcon kg bumpers — 100 kg on a 20 kg bar with Fast Clips', () => {
   const res = solve(
     input({ brand: 'metcon', unit: 'kg', target: 100, bar: 20, collarsOn: true, collarWeight: 0, includeChange: false }),
-    'all',
+    'fewest',
   )
 
   it('Fast Clips add nothing', () => {
@@ -116,7 +116,7 @@ describe('Metcon coloured lb', () => {
   })
 
   it('185 lb offers 55+35 as well as 45+25', () => {
-    const res = solve(input({ brand: 'metcon', unit: 'lb', target: 185, bar: 45, includeChange: false }), 'all')
+    const res = solve(input({ brand: 'metcon', unit: 'lb', target: 185, bar: 45, includeChange: false }), 'fewest')
     expect(res.perSide).toBe(70)
     const s = sigs(res.combos)
     expect(s).toContain('45+25')
@@ -136,7 +136,7 @@ describe('inventory limits', () => {
         counts: { 25: 2, 20: 8, 15: 4, 10: 4, 5: 4 },
         includeChange: false,
       }),
-      'all',
+      'fewest',
     )
     for (const c of res.combos) {
       const twentyFives = c.plates.find((p) => p.weight === 25)?.count ?? 0
@@ -148,7 +148,7 @@ describe('inventory limits', () => {
   it('an odd plate count still only yields pairs', () => {
     const res = solve(
       input({ brand: 'metcon', unit: 'kg', target: 70, bar: 20, counts: { 25: 3, 20: 0, 15: 0, 10: 0, 5: 0 }, includeChange: false }),
-      'all',
+      'fewest',
     )
     // 25 kg per side needs one pair; a third plate is unusable.
     expect(res.ok).toBe(true)
@@ -164,14 +164,14 @@ describe('unreachable weights', () => {
   })
 
   it('returns nearest reachable totals either side', () => {
-    const res = solve(input({ brand: 'metcon', unit: 'kg', target: 101, bar: 20, includeChange: false }), 'all')
+    const res = solve(input({ brand: 'metcon', unit: 'kg', target: 101, bar: 20, includeChange: false }), 'fewest')
     expect(res.ok).toBe(false)
     expect(res.nearestBelow).toBe(100)
     expect(res.nearestAbove).toBe(110)
   })
 
   it('Metcon bumpers only cannot make 2.5 lb steps, and says what is near', () => {
-    const res = solve(input({ brand: 'metcon', unit: 'lb', target: 227.5, bar: 45, includeChange: false }), 'all')
+    const res = solve(input({ brand: 'metcon', unit: 'lb', target: 227.5, bar: 45, includeChange: false }), 'fewest')
     expect(res.ok).toBe(false)
     expect(res.nearestBelow).toBe(225)
     expect(res.nearestAbove).toBe(235) // 45 + 35 + 15 a side
@@ -180,9 +180,9 @@ describe('unreachable weights', () => {
   it('change plates unlock the weights between the bumper steps', () => {
     // Metcon's smallest plate is 2.5 lb, so 227.5 stays out of reach either way,
     // but 230 opens up the moment the change plates are available.
-    const off = solve(input({ brand: 'metcon', unit: 'lb', target: 230, bar: 45, includeChange: false }), 'all')
+    const off = solve(input({ brand: 'metcon', unit: 'lb', target: 230, bar: 45, includeChange: false }), 'fewest')
     expect(off.ok).toBe(false)
-    const on = solve(input({ brand: 'metcon', unit: 'lb', target: 230, bar: 45, includeChange: true }), 'all')
+    const on = solve(input({ brand: 'metcon', unit: 'lb', target: 230, bar: 45, includeChange: true }), 'fewest')
     expect(on.ok).toBe(true)
     expect(sigs(on.combos)).toContain('45+45+2.5')
   })
@@ -198,7 +198,7 @@ describe('unreachable weights', () => {
 })
 
 describe('combination shape', () => {
-  const res = solve(input({ brand: 'eleiko', unit: 'kg', target: 140, bar: 20, collarWeight: 2.5 }), 'all')
+  const res = solve(input({ brand: 'eleiko', unit: 'kg', target: 140, bar: 20, collarWeight: 2.5 }), 'fewest')
 
   it('combinations are unique', () => {
     const seen = new Set(res.combos.map((c) => c.id))
@@ -213,7 +213,7 @@ describe('combination shape', () => {
   })
 
   it('a bare bar is a valid solution', () => {
-    const res2 = solve(input({ brand: 'eleiko', unit: 'kg', target: 20, bar: 20, collarsOn: false }), 'all')
+    const res2 = solve(input({ brand: 'eleiko', unit: 'kg', target: 20, bar: 20, collarsOn: false }), 'fewest')
     expect(res2.ok).toBe(true)
     expect(res2.combos[0].plates).toHaveLength(0)
   })
@@ -223,7 +223,7 @@ describe('sleeve capacity', () => {
   it('Metcon 25 + 20 kg is 73 + 63 = 136 mm per side', () => {
     const res = solve(
       input({ brand: 'metcon', unit: 'kg', target: 110, bar: 20, includeChange: false, counts: { 25: 2, 20: 2 } }),
-      'all',
+      'fewest',
     )
     const combo = res.combos.find((c) => sig(c) === '25+20')!
     expect(combo).toBeDefined()

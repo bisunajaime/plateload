@@ -61,7 +61,7 @@ export interface Settings {
 
 export const STORAGE_KEY = 'plateload.v1'
 
-export const RANK_MODES: RankMode[] = ['recommended', 'competition', 'fewest', 'compact', 'inventory', 'all']
+export const RANK_MODES: RankMode[] = ['recommended', 'competition', 'fewest', 'compact']
 const THEMES: Settings['theme'][] = ['light', 'dark', 'system']
 const PLATE_STYLES: EleikoStyle[] = ['bumper', 'calibrated-steel', 'auto']
 
@@ -236,8 +236,9 @@ export const unitForBrand = (brand: Brand): Unit => (brand === 'metcon' ? 'lb' :
 export const brandForUnit = (unit: Unit): Brand => (unit === 'lb' ? 'metcon' : 'eleiko')
 
 /**
- * Switch brand: adopt its unit, reset the bar and collars to that brand's
- * defaults, and carry the target across as the same real load.
+ * Switch brand: adopt its unit, reset the bar and collar type to that brand's
+ * defaults, keep collars on or off as they were, and carry the target across
+ * as the same real load.
  */
 export function applyBrand(s: Settings, brand: Brand): Settings {
   const unit = unitForBrand(brand)
@@ -248,9 +249,10 @@ export function applyBrand(s: Settings, brand: Brand): Settings {
     // The bar resets — an Eleiko 20 kg and a US 45 lb bar are not the same bar.
     barId: defaultBarId(brand, unit),
     customBarWeight: null,
+    // The collar *type* follows the brand; whether you use collars at all is
+    // yours, and switching brand used to turn them back on.
     collarKind: defaultCollarKind(brand),
     collarWeight: null,
-    collars: true,
     // 100 kg becomes 220.5 lb, not 100 lb.
     target: s.unit === unit ? s.target : roundHalf(convert(s.target, s.unit, unit)),
     inventory: { ...defaultInventory(brand, unit), ...s.inventory },

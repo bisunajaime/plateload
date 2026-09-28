@@ -29,9 +29,10 @@ export function YourWeights({
   if (editing && favorites.length === 0) setEditing(false)
   if (favorites.length === 0 && recents.length === 0) return null
 
-  // A weight in the other unit switches brand with it — say so on the chip.
-  const unitTag = (u: Unit) =>
-    u === unit ? <span className="text-muted">{u}</span> : <span className="text-ink">{u} · {brandOf(u)}</span>
+  // A weight in the other unit belongs to the other brand's plates: shown, but
+  // quieter, and tagged with the brand it would switch you to.
+  const unitTag = (u: Unit) => <span className="text-muted">{u === unit ? u : `${u} · ${brandOf(u)}`}</span>
+  const chipClass = (u: Unit) => (u === unit ? 'chip' : 'chip border-dashed text-muted opacity-70')
 
   return (
     <section aria-labelledby="weights-heading">
@@ -70,7 +71,7 @@ export function YourWeights({
                     </span>
                   </button>
                 ) : (
-                  <button type="button" className="chip" onClick={() => onPick(f.weight, f.unit)}>
+                  <button type="button" className={chipClass(f.unit)} onClick={() => onPick(f.weight, f.unit)}>
                     <span className="font-semibold">{f.label || 'Unnamed'}</span>
                     <span className="tabular-nums">
                       {fmt(f.weight)} {unitTag(f.unit)}
@@ -90,7 +91,7 @@ export function YourWeights({
                 <button
                   key={`${r.weight}-${r.unit}`}
                   type="button"
-                  className="chip tabular-nums"
+                  className={`${chipClass(r.unit)} tabular-nums`}
                   onClick={() => onPick(r.weight, r.unit)}
                 >
                   <span className="font-semibold">{fmt(r.weight)}</span>

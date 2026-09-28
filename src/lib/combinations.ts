@@ -47,7 +47,9 @@ export interface Combo {
   competitionLegal: boolean
 }
 
-export type RankMode = 'recommended' | 'competition' | 'fewest' | 'compact' | 'inventory' | 'all'
+// "All" sorted exactly like fewest, and "use what I have" scored only the two
+// heaviest plates, so it ordered almost exactly like competition. Both went.
+export type RankMode = 'recommended' | 'competition' | 'fewest' | 'compact'
 
 export interface SolveInput {
   target: number
@@ -324,12 +326,6 @@ export function rankCombos(combos: Combo[], mode: RankMode, denoms: Denom[]): Co
     if (!v) cache.set(k, (v = vec(c)))
     return v
   }
-  /** Consumption of the two heaviest denominations available. */
-  const heavyUse = (c: Combo) => {
-    const v = V(c)
-    return (v[0] ?? 0) * 100 + (v[1] ?? 0) * 10
-  }
-
   const sorted = [...combos]
   switch (mode) {
     case 'competition':
@@ -340,12 +336,6 @@ export function rankCombos(combos: Combo[], mode: RankMode, denoms: Denom[]): Co
       break
     case 'compact':
       sorted.sort((a, b) => a.sleeveMm - b.sleeveMm || a.plateCount - b.plateCount || lexDesc(V(a), V(b)))
-      break
-    case 'inventory':
-      sorted.sort((a, b) => heavyUse(b) - heavyUse(a) || a.plateCount - b.plateCount || lexDesc(V(a), V(b)))
-      break
-    case 'all':
-      sorted.sort((a, b) => a.plateCount - b.plateCount || lexDesc(V(a), V(b)))
       break
     case 'recommended':
     default:

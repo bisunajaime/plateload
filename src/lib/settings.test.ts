@@ -147,3 +147,10 @@ describe('stored settings are untrusted', () => {
     expect(s.collarWeight).toBe(1.5)
   })
 })
+
+describe('switching brand', () => {
+  it('keeps collars off when they were off', () => {
+    const s = applyBrand({ ...defaultSettings(), collars: false }, 'eleiko')
+    expect(s.collars).toBe(false)
+  })
+})

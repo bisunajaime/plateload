@@ -134,7 +134,10 @@ export function useSettings() {
   const pickWeight = useCallback((weight: number, unit: Unit) => {
     setSettings((prev) => {
       const next = prev.unit === unit ? prev : applyBrand(prev, brandForUnit(unit))
-      return remember({ ...next, target: weight }, weight, unit)
+      // A weight already in recents keeps its place: moving it to the front
+      // slid the chip out from under your finger, so a second tap hit another weight.
+      const known = next.lastWeights.some((r) => r.weight === weight && r.unit === unit)
+      return known ? { ...next, target: weight } : remember({ ...next, target: weight }, weight, unit)
     })
   }, [])
 
