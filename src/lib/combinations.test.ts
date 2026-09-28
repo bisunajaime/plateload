@@ -190,7 +190,8 @@ describe('unreachable weights', () => {
   it('smallest increment reflects the available denominations', () => {
     const bumpersOnly = input({ brand: 'metcon', unit: 'lb', target: 225, bar: 45, includeChange: false })
     const withChange = input({ brand: 'metcon', unit: 'lb', target: 225, bar: 45, includeChange: true })
-    expect(smallestIncrement(bumpersOnly.denoms, 'lb')).toBe(20)
+    // 10s and 15s make 65 and 75 lb — 10 lb apart, though the lightest pair is 20
+    expect(smallestIncrement(bumpersOnly.denoms, 'lb')).toBe(10)
     // 2.5 lb is Metcon's smallest plate, and plates go on in pairs
     expect(smallestIncrement(withChange.denoms, 'lb')).toBe(5)
   })
@@ -329,5 +330,47 @@ describe('performance', () => {
     expect(res.ok).toBe(true)
     expect(res.combos.length).toBeGreaterThan(0)
     expect(ms).toBeLessThan(50)
+  })
+})
+
+describe('the sleeve has to hold it', () => {
+  it('a weight the plates make but the sleeve cannot hold is not loadable', () => {
+    // 900 lb needs ~640 mm of plates a side; the sleeve is 415 mm.
+    const res = solve(input({ brand: 'metcon', unit: 'lb', target: 900, bar: 45, collarWidthMm: 30 }))
+    expect(res.ok).toBe(false)
+    expect(res.reason).toBe('too-wide')
+    // …and what it suggests instead does fit.
+    expect(res.nearestBelow).not.toBeNull()
+    const below = solve(input({ brand: 'metcon', unit: 'lb', target: res.nearestBelow!, bar: 45, collarWidthMm: 30 }))
+    expect(below.ok).toBe(true)
+    expect(below.combos.some((c) => !c.overCapacity)).toBe(true)
+  })
+
+  it('snapping never lands on a load that cannot fit', () => {
+    const i = input({ brand: 'metcon', unit: 'lb', target: 1000, bar: 45, collarWidthMm: 30 })
+    const snapped = snapToLoadable(i, 1000)
+    const res = solve({ ...i, target: snapped })
+    expect(res.ok).toBe(true)
+    expect(res.combos.some((c) => !c.overCapacity)).toBe(true)
+  })
+})
+
+describe('compact finds the thinnest stack even when the search is capped', () => {
+  it('matches a brute-force minimum in a well-stocked gym', () => {
+    // 99 of every Eleiko plate: far more combinations than the search keeps.
+    const counts = Object.fromEntries([25, 20, 15, 10, 5, 2.5, 2, 1.5, 1, 0.5, 0.25].map((w) => [w, 99]))
+    const i = input({ brand: 'eleiko', unit: 'kg', target: 150, bar: 20, collarWeight: 2.5, collarWidthMm: 30, counts })
+    const res = solve(i, 'compact')
+    expect(res.truncated).toBe(true)
+    // Brute force: every way to make 62.5 kg a side, thinnest wins.
+    let thinnest = Infinity
+    const walk = (d: number, left: number, mm: number) => {
+      if (left === 0) thinnest = Math.min(thinnest, mm)
+      if (left <= 0 || d >= i.denoms.length || mm >= thinnest) return
+      const { milli, maxPerSide, thicknessMm } = i.denoms[d]
+      for (let c = Math.min(maxPerSide, Math.floor(left / milli)); c >= 0; c--) walk(d + 1, left - c * milli, mm + c * thicknessMm)
+    }
+    walk(0, 62500, 30)
+    expect(res.combos[0].sleeveMm).toBe(thinnest)
   })
 })

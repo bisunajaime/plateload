@@ -124,3 +124,26 @@ describe('end to end through the app’s own settings', () => {
   })
 
 })
+
+describe('stored settings are untrusted', () => {
+  it('an unknown collar kind falls back instead of crashing the app', () => {
+    const s = hydrate({ collarKind: 'nope' })
+    expect(s.collarKind in COLLARS).toBe(true)
+  })
+
+  it('bad enums and impossible numbers fall back to defaults', () => {
+    const d = defaultSettings()
+    const s = hydrate({ brand: 'garbage', mode: 'x', theme: 5, customBarWeight: -100, lastWeights: [{ weight: -5, unit: 'kg' }] })
+    expect(s.brand).toBe(d.brand)
+    expect(s.mode).toBe(d.mode)
+    expect(s.theme).toBe(d.theme)
+    expect(s.customBarWeight).toBeNull()
+    expect(s.lastWeights).toEqual([])
+  })
+
+  it('valid collar choices survive', () => {
+    const s = hydrate({ ...defaultSettings(), collarKind: 'generic', collarWeight: 1.5 })
+    expect(s.collarKind).toBe('generic')
+    expect(s.collarWeight).toBe(1.5)
+  })
+})

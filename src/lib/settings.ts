@@ -61,6 +61,16 @@ export interface Settings {
 
 export const STORAGE_KEY = 'plateload.v1'
 
+export const RANK_MODES: RankMode[] = ['recommended', 'competition', 'fewest', 'compact', 'inventory', 'all']
+const THEMES: Settings['theme'][] = ['light', 'dark', 'system']
+const PLATE_STYLES: EleikoStyle[] = ['bumper', 'calibrated-steel', 'auto']
+
+/** Heaviest target the app accepts — well past any world record. */
+export const MAX_TARGET = 2000
+
+const positive = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0
+const oneOf = <T,>(v: unknown, allowed: readonly T[], fallback: T): T => (allowed.includes(v as T) ? (v as T) : fallback)
+
 export function defaultSettings(): Settings {
   const brand: Brand = 'metcon'
   const unit: Unit = 'lb'
@@ -97,12 +107,39 @@ export function hydrate(raw: unknown): Settings {
   const base = defaultSettings()
   if (!raw || typeof raw !== 'object') return base
   const s = raw as Partial<Settings>
+  // Stored settings are untrusted: an old build or a hand edit can leave a
+  // value the app would crash on (an unknown collar kind threw on every load).
+  const brand = oneOf<Brand>(s.brand, ['eleiko', 'metcon'], base.brand)
+  const unit = oneOf<Unit>(s.unit, ['kg', 'lb'], unitForBrand(brand))
+  const inventory: Record<string, number> = { ...base.inventory }
+  if (s.inventory && typeof s.inventory === 'object') {
+    for (const [id, n] of Object.entries(s.inventory)) {
+      if (typeof n === 'number' && Number.isFinite(n) && n >= 0) inventory[id] = Math.min(99, Math.round(n))
+    }
+  }
   const merged: Settings = {
     ...base,
     ...s,
-    inventory: { ...base.inventory, ...(s.inventory ?? {}) },
-    favorites: Array.isArray(s.favorites) ? s.favorites.filter((f) => f && typeof f.weight === 'number') : [],
-    lastWeights: hydrateRecents(s.lastWeights, (s.unit as Unit) ?? base.unit),
+    brand,
+    unit,
+    theme: oneOf(s.theme, THEMES, base.theme),
+    plateStyle: oneOf(s.plateStyle, PLATE_STYLES, base.plateStyle),
+    collarKind: s.collarKind && s.collarKind in COLLARS ? s.collarKind : defaultCollarKind(brand),
+    collarWeight: typeof s.collarWeight === 'number' && Number.isFinite(s.collarWeight) && s.collarWeight >= 0 ? s.collarWeight : null,
+    customBarWeight: positive(s.customBarWeight) ? s.customBarWeight : null,
+    mode: oneOf(s.mode, RANK_MODES, base.mode),
+    collars: typeof s.collars === 'boolean' ? s.collars : base.collars,
+    includeChange: typeof s.includeChange === 'boolean' ? s.includeChange : base.includeChange,
+    gymMode: typeof s.gymMode === 'boolean' ? s.gymMode : base.gymMode,
+    showLabels: typeof s.showLabels === 'boolean' ? s.showLabels : base.showLabels,
+    closeUp: typeof s.closeUp === 'boolean' ? s.closeUp : base.closeUp,
+    inventory,
+    favorites: Array.isArray(s.favorites)
+      ? s.favorites
+          .filter((f) => f && positive(f.weight) && (f.unit === 'kg' || f.unit === 'lb'))
+          .map((f) => ({ label: typeof f.label === 'string' ? f.label : '', weight: f.weight, unit: f.unit }))
+      : [],
+    lastWeights: hydrateRecents(s.lastWeights, unit),
   }
   const pos = s.preview
   merged.preview =
@@ -110,7 +147,7 @@ export function hydrate(raw: unknown): Settings {
       ? { side: pos.side, y: pos.y }
       : base.preview
   if (!BARS.some((b) => b.id === merged.barId)) merged.barId = defaultBarId(merged.brand, merged.unit)
-  if (!Number.isFinite(merged.target) || merged.target <= 0) merged.target = base.target
+  if (!positive(merged.target) || merged.target > MAX_TARGET) merged.target = base.target
   // Old stores (and hand-edited ones) may hold a unit the brand does not use.
   if (merged.unit !== unitForBrand(merged.brand)) return applyBrand(merged, merged.brand)
   return merged
@@ -123,11 +160,11 @@ function hydrateRecents(raw: unknown, storedUnit: Unit): RecentWeight[] {
     .map((r) =>
       typeof r === 'number'
         ? { weight: r, unit: storedUnit }
-        : r && typeof (r as RecentWeight).weight === 'number' && ((r as RecentWeight).unit === 'kg' || (r as RecentWeight).unit === 'lb')
+        : r && positive((r as RecentWeight).weight) && ((r as RecentWeight).unit === 'kg' || (r as RecentWeight).unit === 'lb')
           ? { weight: (r as RecentWeight).weight, unit: (r as RecentWeight).unit }
           : null,
     )
-    .filter((r): r is RecentWeight => r !== null)
+    .filter((r): r is RecentWeight => r !== null && r.weight > 0)
     .slice(0, 15)
 }
 

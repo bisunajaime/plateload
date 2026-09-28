@@ -33,7 +33,12 @@ export const LoadCard = forwardRef<
     down: number | null
     up: number | null
     quickSteps: number[]
-    onSet: (w: number) => void
+    /** −/+: move the bar, not worth remembering. */
+    onStep: (w: number) => void
+    /** A quick jump by this much, landing on something loadable. */
+    onJump: (delta: number) => void
+    /** A weight chosen on purpose — typed, or a suggested load. */
+    onEnter: (w: number) => void
     onToggleCloseUp: () => void
     onSave: () => void
     onCopy: () => void
@@ -50,9 +55,13 @@ export const LoadCard = forwardRef<
   const [keypad, setKeypad] = useState(false)
   const byId = useMemo(() => new Map(plates.map((p) => [p.id, p])), [plates])
 
-  const set = (w: number) => {
-    props.onSet(Math.max(0, Math.round(w * 1000) / 1000))
+  const buzz = () => {
     if ('vibrate' in navigator) navigator.vibrate?.(8)
+  }
+  const step = (w: number | null) => {
+    if (w == null) return
+    props.onStep(w)
+    buzz()
   }
 
   // A phone gets the big keypad; a keyboard gets a field to type into.
@@ -63,9 +72,10 @@ export const LoadCard = forwardRef<
       setTyping(true)
     }
   }
+  // Empty or zero is a change of mind, not a request for an empty bar weight.
   const commit = (raw: string) => {
     const n = Number(raw)
-    if (raw.trim() !== '' && Number.isFinite(n) && n >= 0) set(n)
+    if (raw.trim() !== '' && Number.isFinite(n) && n > 0) props.onEnter(Math.round(n * 1000) / 1000)
     setTyping(false)
   }
 
@@ -121,7 +131,7 @@ export const LoadCard = forwardRef<
           <button
             type="button"
             className="step-btn"
-            onClick={() => set(props.down ?? target - 1)}
+            onClick={() => step(props.down)}
             disabled={props.down == null}
             aria-label={props.down != null ? `Down to ${fmt(props.down)} ${unit}` : 'Nothing lighter to load'}
           >
@@ -162,7 +172,7 @@ export const LoadCard = forwardRef<
           <button
             type="button"
             className="step-btn"
-            onClick={() => set(props.up ?? target + 1)}
+            onClick={() => step(props.up)}
             disabled={props.up == null}
             aria-label={props.up != null ? `Up to ${fmt(props.up)} ${unit}` : 'Nothing heavier to load'}
           >
@@ -171,7 +181,15 @@ export const LoadCard = forwardRef<
         </div>
 
         {/* ------------------------------------------------------ the plates */}
-        <div className="mt-5 min-h-[76px]" aria-live="polite">
+        {/* One short sentence for screen readers, instead of re-reading the chips and buttons. */}
+        <p className="sr-only" aria-live="polite">
+          {result.ok && combo
+            ? combo.plates.length
+              ? `${fmt(target)} ${unit}: ${combo.plates.map((p) => `${p.count > 1 ? `${p.count} × ` : ''}${fmt(p.weight)}`).join(', ')} each side`
+              : `${fmt(target)} ${unit}: empty bar`
+            : `${fmt(target)} ${unit} can’t be loaded`}
+        </p>
+        <div className="mt-5 min-h-[76px]">
           {result.ok && combo ? (
             <div className="flex flex-col items-center gap-2.5">
               <ul className="flex flex-wrap justify-center gap-1.5" aria-label="Plates on each side, heaviest first">
@@ -209,7 +227,7 @@ export const LoadCard = forwardRef<
               base={props.base}
               nearestBelow={result.nearestBelow}
               nearestAbove={result.nearestAbove}
-              onPick={set}
+              onPick={props.onEnter}
               changeOff={props.changeOff}
               onEnableChange={props.onEnableChange}
               onOpenSetup={props.onOpenSetup}
@@ -218,9 +236,17 @@ export const LoadCard = forwardRef<
         </div>
 
         {/* ---------------------------------------------------- quick jumps */}
-        <div className="mt-4 grid grid-cols-4 gap-2 gym-hide" role="group" aria-label="Add weight">
+        <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Add weight">
           {props.quickSteps.map((q) => (
-            <button key={q} type="button" className="jump-btn" onClick={() => set(target + q)}>
+            <button
+              key={q}
+              type="button"
+              className="jump-btn"
+              onClick={() => {
+                props.onJump(q)
+                buzz()
+              }}
+            >
               +{fmt(q)}
             </button>
           ))}

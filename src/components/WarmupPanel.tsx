@@ -3,6 +3,7 @@ import type { Unit } from '../data/plates'
 import type { SolveInput } from '../lib/combinations'
 import { convert, fmt } from '../lib/format'
 import { DEFAULT_RAMP, percentTable, warmupPlan } from '../lib/warmup'
+import { NumberField } from './NumberField'
 import { ChevronIcon, Segmented } from './ui'
 
 type Tab = 'warmup' | 'percent' | 'convert'
@@ -168,14 +169,12 @@ export function WarmupPanel({
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted">1RM</span>
-              <input
-                type="number"
-                step="any"
-                min={0}
+              <NumberField
                 className="btn w-28 justify-center"
                 value={oneRm}
-                onChange={(e) => {
-                  setOneRm(Number(e.target.value))
+                onCommit={(v) => {
+                  if (v == null || v <= 0) return
+                  setOneRm(v)
                   setRmEdited(true)
                 }}
                 aria-label={`One rep max in ${unit}`}
@@ -209,7 +208,13 @@ export function WarmupPanel({
                     className={`btn w-full flex-col items-start gap-0 py-2 ${
                       loaded ? 'border-transparent bg-good/10 ring-2 ring-good' : ''
                     }`}
-                    onClick={() => onPick(r.weight)}
+                    onClick={() => {
+                      // Loading a row moves the bar, and the 1RM follows the bar
+                      // until the table is used — so pin it first, or the row you
+                      // tapped becomes the new 100 % and the table rebuilds under you.
+                      setRmEdited(true)
+                      onPick(r.weight)
+                    }}
                   >
                     <span className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider ${loaded ? 'font-semibold text-good' : 'text-muted'}`}>
                       {loaded && <span className="h-1.5 w-1.5 rounded-full bg-good" aria-hidden="true" />}

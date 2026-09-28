@@ -28,6 +28,7 @@ export function MiniBar({
   collarWidthMm,
   unit,
   total,
+  loadable,
   pos,
   onMove,
   onClick,
@@ -41,6 +42,8 @@ export function MiniBar({
   collarWidthMm: number
   unit: Unit
   total: number
+  /** False when the target can't be built — the preview must not pretend it is on the bar. */
+  loadable: boolean
   pos: PreviewPos
   onMove: (pos: PreviewPos) => void
   onClick: () => void
@@ -121,12 +124,17 @@ export function MiniBar({
       onPointerUp={up}
       onPointerCancel={up}
       onClick={() => {
-        if (moved.current) return // that was a drag
+        // A drag ends in a click too. Swallow it — once, so Enter and Space
+        // still work from the keyboard afterwards.
+        if (moved.current) {
+          moved.current = false
+          return
+        }
         onClick()
       }}
       aria-hidden={!show}
       tabIndex={show ? 0 : -1}
-      aria-label={`Currently loaded: ${fmt(total)} ${unit}. Drag to move, or activate to jump to the barbell.`}
+      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Drag to move, or activate to jump to the barbell.`}
       style={style}
       className={`fixed z-40 w-[150px] cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-line bg-surface/95 shadow-xl backdrop-blur sm:w-[200px] ${
         drag ? 'cursor-grabbing scale-[1.03]' : animate ? 'transition-[opacity,transform,top,left,right] duration-200' : ''
@@ -155,7 +163,7 @@ export function MiniBar({
           {fmt(total)} {unit}
         </span>
         <span className="text-[11px] text-muted tabular-nums">
-          {combo ? `${fmt(combo.perSide)}/side` : 'bar only'}
+          {!loadable ? <span className="text-bad">can’t load</span> : combo?.plates.length ? `${fmt(combo.perSide)}/side` : 'bar only'}
         </span>
       </div>
     </button>

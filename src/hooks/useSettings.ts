@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BARS, type Brand, type Unit } from '../data/plates'
 import type { RankMode } from '../lib/combinations'
-import { STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
+import { MAX_TARGET, RANK_MODES, STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
 
 /* ------------------------------------------------------------------- URL sync */
 
@@ -11,25 +11,25 @@ function readUrl(base: Settings): Settings {
   if ([...q.keys()].length === 0) return base
   let s = { ...base }
   // The brand carries the unit, so `brand` wins and a bare `u` implies a brand.
-  const brand = q.get('brand')
+  // Switch only when it differs: the app writes `brand` into every URL, and
+  // switching resets the bar and collars — so every reload used to wipe them.
+  const brandParam = q.get('brand')
   const unit = q.get('u')
-  if (brand === 'eleiko' || brand === 'metcon') {
-    s = applyBrand(s, brand as Brand)
-  } else if (unit === 'kg' || unit === 'lb') {
-    s = applyBrand(s, brandForUnit(unit))
-  }
+  const brand: Brand | null =
+    brandParam === 'eleiko' || brandParam === 'metcon' ? brandParam : unit === 'kg' || unit === 'lb' ? brandForUnit(unit) : null
+  if (brand && brand !== s.brand) s = applyBrand(s, brand)
   const w = Number(q.get('w'))
-  if (Number.isFinite(w) && w > 0) s.target = w
-  const bar = q.get('bar')
+  if (q.get('w') && Number.isFinite(w) && w > 0 && w <= MAX_TARGET) s.target = w
+  const bar = q.get('bar')?.trim()
   if (bar && BARS.some((b) => b.id === bar)) s.barId = bar
-  else if (bar && Number.isFinite(Number(bar))) {
+  else if (bar && Number.isFinite(Number(bar)) && Number(bar) > 0) {
     s.barId = 'custom'
     s.customBarWeight = Number(bar)
   }
   const collars = q.get('collars')
   if (collars != null) s.collars = collars === '1' || collars === 'true'
   const mode = q.get('mode')
-  if (mode) s.mode = mode as RankMode
+  if (mode && (RANK_MODES as string[]).includes(mode)) s.mode = mode as RankMode
   const sleeveView = q.get('sleeve')
   if (sleeveView != null) s.closeUp = sleeveView === '1'
   const change = q.get('change')
@@ -113,11 +113,12 @@ export function useSettings() {
   }, [])
 
   const setBrand = useCallback((brand: Brand) => {
-    setSettings((prev) => applyBrand(prev, brand))
+    // Tapping the brand you are already on used to reset the bar and collars.
+    setSettings((prev) => (prev.brand === brand ? prev : applyBrand(prev, brand)))
   }, [])
 
   const setTarget = useCallback((target: number) => {
-    setSettings((prev) => ({ ...prev, target: Math.max(0, Math.round(target * 1000) / 1000) }))
+    setSettings((prev) => ({ ...prev, target: Math.min(MAX_TARGET, Math.max(0, Math.round(target * 1000) / 1000)) }))
   }, [])
 
   /** Push a weight onto the recents list (deduped by weight and unit, newest first). */

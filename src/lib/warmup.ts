@@ -1,6 +1,5 @@
 import type { Unit } from '../data/plates'
-import { baseWeight, round3, snapToLoadable, toMilli, type SolveInput } from './combinations'
-import { reachablePerSide } from './combinations'
+import { baseWeight, fittingReach, round3, snapToLoadable, toMilli, type SolveInput } from './combinations'
 
 export interface WarmupStep {
   key: string
@@ -67,7 +66,7 @@ export interface JumpInfo {
 
 /** Smallest change from `current` that the gym can actually load. */
 export function nextJump(input: SolveInput, current: number): JumpInfo {
-  const reach = reachablePerSide(input.denoms)
+  const reach = fittingReach(input)
   const base = baseWeight(input)
   const baseMilli = toMilli(base)
   const currentPerSide = (toMilli(current) - baseMilli) / 2

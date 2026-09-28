@@ -24,6 +24,9 @@ export function YourWeights({
   onRemove: (index: number) => void
 }) {
   const [editing, setEditing] = useState(false)
+  // Removing the last favourite ends the edit — otherwise Recent stayed hidden
+  // with no Done button left, and the next favourite saved arrived in delete mode.
+  if (editing && favorites.length === 0) setEditing(false)
   if (favorites.length === 0 && recents.length === 0) return null
 
   // A weight in the other unit switches brand with it — say so on the chip.
@@ -41,7 +44,7 @@ export function YourWeights({
             type="button"
             className="-mr-2 min-h-[36px] rounded-lg px-2 text-xs font-medium text-muted transition hover:text-ink"
             aria-pressed={editing}
-            onClick={() => setEditing((e) => !e)}
+            onClick={() => setEditing(!editing)}
           >
             {editing ? 'Done' : 'Edit'}
           </button>

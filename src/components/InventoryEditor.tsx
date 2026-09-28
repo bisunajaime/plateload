@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   BARS,
   COLLARS,
@@ -12,6 +12,7 @@ import {
 } from '../data/plates'
 import { fmt } from '../lib/format'
 import { collarWeightOf, type Settings } from '../lib/settings'
+import { NumberField } from './NumberField'
 import { ThemeToggle } from './ThemeToggle'
 import { Segmented, Sheet, Toggle } from './ui'
 
@@ -39,9 +40,7 @@ export function SettingsSheet({
       wide
       footer={
         <div className="flex items-center justify-between gap-3">
-          <button className="btn btn-ghost" onClick={onReset}>
-            Reset everything
-          </button>
+          <ResetButton onReset={onReset} />
           <button className="btn btn-primary px-6" onClick={onClose}>
             Done
           </button>
@@ -117,13 +116,12 @@ export function SettingsSheet({
           {bar.custom && (
             <label className="mt-3 flex items-center gap-3 text-sm">
               <span className="text-muted">Bar weight ({settings.unit})</span>
-              <input
-                type="number"
-                step="any"
-                min={0}
+              <NumberField
                 className="btn w-32 justify-center"
-                value={settings.customBarWeight ?? ''}
-                onChange={(e) => update({ customBarWeight: e.target.value === '' ? null : Number(e.target.value) })}
+                value={settings.customBarWeight}
+                placeholder={fmt(barWeight(bar, settings.unit, null))}
+                onCommit={(v) => update({ customBarWeight: v && v > 0 ? v : null })}
+                aria-label={`Custom bar weight in ${settings.unit}`}
               />
             </label>
           )}
@@ -155,13 +153,10 @@ export function SettingsSheet({
             </select>
             <label className="flex items-center gap-3 text-sm">
               <span className="shrink-0 text-muted">Each ({settings.unit})</span>
-              <input
-                type="number"
-                step="any"
-                min={0}
+              <NumberField
                 className="btn w-full justify-center"
-                value={settings.collarWeight ?? fmt(collarWeightOf(settings))}
-                onChange={(e) => update({ collarWeight: e.target.value === '' ? null : Number(e.target.value) })}
+                value={collarWeightOf(settings)}
+                onCommit={(v) => update({ collarWeight: v })}
                 aria-label={`Collar weight in ${settings.unit}`}
               />
             </label>
@@ -287,13 +282,12 @@ function PlateRows({
                 >
                   −
                 </button>
-                <input
-                  type="number"
-                  min={0}
+                <NumberField
+                  integer
                   max={99}
                   className="h-10 w-14 rounded-lg border border-line bg-surface text-center text-sm tabular-nums"
                   value={count}
-                  onChange={(e) => setCount(p.id, Number(e.target.value))}
+                  onCommit={(v) => setCount(p.id, v ?? 0)}
                   aria-label={`${p.weight} ${p.unit} plates in the gym`}
                 />
                 <button
@@ -313,5 +307,28 @@ function PlateRows({
         })}
       </ul>
     </div>
+  )
+}
+
+/**
+ * Reset wipes favourites, recents, inventory and setup, so it takes a second
+ * tap — the first only arms it, and it disarms itself after a few seconds.
+ */
+function ResetButton({ onReset }: { onReset: () => void }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const t = window.setTimeout(() => setArmed(false), 4000)
+    return () => window.clearTimeout(t)
+  }, [armed])
+  return (
+    <button
+      type="button"
+      className={`btn ${armed ? 'btn-danger' : 'btn-ghost'}`}
+      onClick={() => (armed ? onReset() : setArmed(true))}
+      aria-live="polite"
+    >
+      {armed ? 'Tap again to erase everything' : 'Reset everything'}
+    </button>
   )
 }

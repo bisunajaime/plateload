@@ -21,7 +21,9 @@ export default function App() {
   const [favOpen, setFavOpen] = useState(false)
   const [favLabel, setFavLabel] = useState('')
   const [removing, setRemoving] = useState<number | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // A picked combination belongs to the load it was picked for; stepping away
+  // and back must not resurrect a choice made for another weight.
+  const [picked, setPicked] = useState<{ load: string; id: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
   const loadout = useMemo(() => resolveLoadout(settings), [settings])
@@ -32,6 +34,14 @@ export default function App() {
   // The jumps a lifter actually makes between sets.
   const quickSteps = settings.unit === 'kg' ? [2.5, 5, 10, 20] : [5, 10, 25, 45]
 
+  const loadKey = `${settings.brand}:${settings.target}:${JSON.stringify(input.denoms.map((d) => d.maxPerSide))}`
+  // Derived during render, no effect: a new load drops the old pick for good.
+  const [prevLoadKey, setPrevLoadKey] = useState(loadKey)
+  if (loadKey !== prevLoadKey) {
+    setPrevLoadKey(loadKey)
+    setPicked(null)
+  }
+  const selectedId = picked?.load === loadKey ? picked.id : null
   const selected: Combo | null = useMemo(() => {
     if (!result.ok || result.combos.length === 0) return null
     return result.combos.find((c) => c.id === selectedId) ?? result.combos[0]
@@ -47,9 +57,9 @@ export default function App() {
       ? `${COLLARS[settings.collarKind].label.toLowerCase()}${loadout.collarWeight ? ` (${fmt(loadout.collarWeight * 2)} ${settings.unit})` : ''}`
       : 'no collars'
     const plates = selected.plates.length
-      ? selected.plates.flatMap((p) => Array.from({ length: p.count }, () => fmt(p.weight))).join('/')
-      : 'bare bar'
-    return `${fmt(settings.target)} ${settings.unit} — ${bar}, ${collar}, ${plates} each side`
+      ? `${selected.plates.flatMap((p) => Array.from({ length: p.count }, () => fmt(p.weight))).join('/')} each side`
+      : 'no plates'
+    return `${fmt(settings.target)} ${settings.unit} — ${bar}, ${collar}, ${plates}`
   }, [selected, settings, loadout])
 
   const copy = useCallback(async () => {
@@ -62,13 +72,21 @@ export default function App() {
     }
   }, [summary])
 
+  /** A weight chosen on purpose. Remembered only if the plates can make it. */
   const pick = useCallback(
     (w: number) => {
       setTarget(w)
-      rememberWeight(w)
+      if (solve(buildSolveInput(settings, w, 1)).ok) rememberWeight(w)
     },
-    [setTarget, rememberWeight],
+    [setTarget, rememberWeight, settings],
   )
+
+  /** A quick jump: at least this much heavier, landing on something loadable. */
+  const jump = (delta: number) => {
+    const want = settings.target + delta
+    const r = solve(buildSolveInput(settings, want, 1))
+    setTarget(r.ok ? want : (r.nearestAbove ?? want))
+  }
 
   // Every favourite is shown whatever its unit — tapping one in the other unit
   // switches brand with it. The index rides along so removal is unambiguous.
@@ -131,7 +149,9 @@ export default function App() {
             down={jumps.down}
             up={jumps.up}
             quickSteps={quickSteps}
-            onSet={pick}
+            onStep={setTarget}
+            onJump={jump}
+            onEnter={pick}
             onToggleCloseUp={() => update({ closeUp: !settings.closeUp })}
             onSave={addFavorite}
             onCopy={copy}
@@ -163,7 +183,7 @@ export default function App() {
                 sleeveMm={loadout.sleeveMm}
                 selectedId={selected?.id ?? null}
                 onSelect={(c) => {
-                  setSelectedId(c.id)
+                  setPicked({ load: loadKey, id: c.id })
                   if ('vibrate' in navigator) navigator.vibrate?.(10)
                 }}
                 truncated={result.truncated}
@@ -195,6 +215,7 @@ export default function App() {
         collarWidthMm={collarWidth}
         unit={settings.unit}
         total={settings.target}
+        loadable={result.ok}
         pos={settings.preview}
         onMove={(preview) => update({ preview })}
         animate={animate}

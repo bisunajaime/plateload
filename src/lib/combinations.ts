@@ -64,7 +64,7 @@ export interface SolveInput {
   limit?: number
 }
 
-export type SolveReason = 'ok' | 'below-bar' | 'no-plates' | 'not-divisible' | 'unreachable'
+export type SolveReason = 'ok' | 'below-bar' | 'no-plates' | 'not-divisible' | 'unreachable' | 'too-wide'
 
 export interface SolveResult {
   ok: boolean
@@ -142,6 +142,73 @@ export function reachablePerSide(denoms: Denom[]): Reach {
     }
   }
   return { step, bits, maxMilli }
+}
+
+/* ---------------------------------------------------- fitting on the sleeve */
+
+interface FitReach extends Reach {
+  /** Thinnest stack, in mm, that makes each per-side load; Infinity where none does. */
+  thinnest: Float64Array
+  /** choice[d][i] = how many of denomination d the thinnest stack for cell i uses. */
+  choice: Uint16Array[]
+}
+
+const fitCache = new Map<string, FitReach>()
+
+/**
+ * Per-side loads the plates can make *and* the sleeve can hold. Reachability
+ * alone said 900 lb was loadable when every way of making it was 642 mm on a
+ * 415 mm sleeve, and every suggestion built on it — nearest weights, steppers,
+ * warm-ups — inherited the mistake. Also records the thinnest stack per load,
+ * which the depth-first search can miss once it hits its cap.
+ */
+export function fittingReach(input: Pick<SolveInput, 'denoms' | 'sleeveMm' | 'collarsOn' | 'collarWidthMm'>): FitReach {
+  const collarMm = input.collarsOn ? input.collarWidthMm : 0
+  const key = `${input.sleeveMm}|${collarMm}|${input.denoms.map((d) => `${d.id}:${d.maxPerSide}:${d.milli}:${d.thicknessMm}`).join(',')}`
+  const hit = fitCache.get(key)
+  if (hit) return hit
+
+  const raw = reachablePerSide(input.denoms)
+  const n = raw.bits.length
+  let prev = new Float64Array(n).fill(Infinity)
+  prev[0] = 0
+  const choice: Uint16Array[] = []
+  for (const d of input.denoms) {
+    const w = d.milli / raw.step
+    const next = new Float64Array(n).fill(Infinity)
+    const pick = new Uint16Array(n)
+    for (let i = 0; i < n; i++) {
+      for (let c = 0; c <= d.maxPerSide && c * w <= i; c++) {
+        const t = prev[i - c * w] + c * d.thicknessMm
+        if (t < next[i]) {
+          next[i] = t
+          pick[i] = c
+        }
+      }
+    }
+    choice.push(pick)
+    prev = next
+  }
+  const bits = new Uint8Array(n)
+  for (let i = 0; i < n; i++) bits[i] = raw.bits[i] && prev[i] + collarMm <= input.sleeveMm + 0.001 ? 1 : 0
+
+  const out: FitReach = { step: raw.step, bits, maxMilli: raw.maxMilli, thinnest: prev, choice }
+  if (fitCache.size > 16) fitCache.delete(fitCache.keys().next().value!)
+  fitCache.set(key, out)
+  return out
+}
+
+/** Plate counts, per denomination, of the thinnest stack for a per-side load. */
+function thinnestCounts(fit: FitReach, denoms: Denom[], cell: number): number[] | null {
+  if (!Number.isFinite(fit.thinnest[cell])) return null
+  const counts = new Array<number>(denoms.length).fill(0)
+  let i = cell
+  for (let d = denoms.length - 1; d >= 0; d--) {
+    const c = fit.choice[d][i]
+    counts[d] = c
+    i -= c * (denoms[d].milli / fit.step)
+  }
+  return i === 0 ? counts : null
 }
 
 const isReachable = (r: Reach, perSideMilli: number): boolean =>
@@ -317,20 +384,25 @@ export function solve(input: SolveInput, mode: RankMode = 'recommended'): SolveR
   })
 
   if (input.denoms.length === 0) {
+    if (toMilli(platesTotal) < 0) return empty('below-bar')
     return platesTotal === 0
       ? { ...empty('ok'), ok: true, combos: [emptyCombo(input)], totalFound: 1 }
       : empty('no-plates')
   }
 
-  const reach = reachablePerSide(input.denoms)
+  const reach = fittingReach(input)
   const near = nearestTotals(input, reach)
 
   if (toMilli(platesTotal) < 0) return empty('below-bar', { nearestAbove: near.above, nearestBelow: near.below })
 
   const perSideMilli = toMilli(input.target) - toMilli(base)
   if (perSideMilli % 2 !== 0 || !isReachable(reach, perSideMilli / 2)) {
-    const reason: SolveReason =
-      perSideMilli % 2 !== 0 || (perSideMilli / 2) % reach.step !== 0 ? 'not-divisible' : 'unreachable'
+    const makeable = perSideMilli % 2 === 0 && isReachable(reachablePerSide(input.denoms), perSideMilli / 2)
+    const reason: SolveReason = makeable
+      ? 'too-wide'
+      : perSideMilli % 2 !== 0 || (perSideMilli / 2) % reach.step !== 0
+        ? 'not-divisible'
+        : 'unreachable'
     return empty(reason, { nearestBelow: near.below, nearestAbove: near.above, smallestStep: near.next })
   }
 
@@ -339,6 +411,14 @@ export function solve(input: SolveInput, mode: RankMode = 'recommended'): SolveR
   }
 
   const { combos: raw, truncated } = search(input.denoms, perSideMilli / 2, reach.step)
+  // A capped search walks heaviest-first and can stop before it reaches the
+  // thinnest stack, so "Compact" would rank a stack that isn't the shortest.
+  if (truncated) {
+    const thin = thinnestCounts(reach, input.denoms, perSideMilli / 2 / reach.step)
+    if (thin && !raw.some((r) => r.counts.every((c, i) => c === thin[i]))) {
+      raw.push({ counts: thin, plateCount: thin.reduce((a, b) => a + b, 0) })
+    }
+  }
   if (raw.length === 0) return empty('unreachable', { nearestBelow: near.below, nearestAbove: near.above, smallestStep: near.next })
 
   const collarMm = input.collarsOn ? input.collarWidthMm : 0
@@ -418,15 +498,19 @@ export function comboTotal(combo: Combo, input: Pick<SolveInput, 'bar' | 'collar
   return round3(baseWeight(input) + plates * 2)
 }
 
-/** Smallest denomination pair step available — the natural stepper increment. */
+/**
+ * The finest total step the plates allow: twice the per-side grid. Not twice
+ * the lightest plate — with bumpers only (25/20/15/10 kg) the lightest pair is
+ * 20 kg but 10 kg steps are reachable.
+ */
 export function smallestIncrement(denoms: Denom[], unit: Unit): number {
   if (denoms.length === 0) return unit === 'kg' ? 2.5 : 5
-  return fromMilli(Math.min(...denoms.map((d) => d.milli)) * 2)
+  return fromMilli(reachablePerSide(denoms).step * 2)
 }
 
 /** Every reachable total between `from` and `to`, for pickers and warm-ups. */
 export function reachableTotals(input: SolveInput, from: number, to: number): number[] {
-  const reach = reachablePerSide(input.denoms)
+  const reach = fittingReach(input)
   const base = toMilli(baseWeight(input))
   const out: number[] = []
   const maxIdx = Math.floor(reach.maxMilli / reach.step)
@@ -440,7 +524,7 @@ export function reachableTotals(input: SolveInput, from: number, to: number): nu
 
 /** Closest loadable total to `want` (ties go up). */
 export function snapToLoadable(input: SolveInput, want: number): number {
-  const reach = reachablePerSide(input.denoms)
+  const reach = fittingReach(input)
   const base = baseWeight(input)
   if (want <= base) return base
   const wantPerSide = (toMilli(want) - toMilli(base)) / 2

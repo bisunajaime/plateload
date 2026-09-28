@@ -31,7 +31,9 @@ export function EmptyState({
       ? `Lighter than the bar — bar and collars weigh ${fmt(base)} ${unit}.`
       : reason === 'no-plates'
         ? 'No plates in your inventory yet.'
-        : changeOff
+        : reason === 'too-wide'
+          ? `Your plates make ${fmt(target)} ${unit}, but not in a stack that fits on the sleeve.`
+          : changeOff
           ? `Can’t make ${fmt(target)} ${unit} with bumpers alone.`
           : `Your plates can’t make ${fmt(target)} ${unit} evenly.`
 
@@ -52,7 +54,8 @@ export function EmptyState({
           )}
         </div>
       )}
-      {changeOff ? (
+      {/* Change plates fill gaps between bumpers; they can't lighten a bar or widen a sleeve. */}
+      {changeOff && (reason === 'unreachable' || reason === 'not-divisible') ? (
         <button type="button" className="text-sm font-medium text-ink underline underline-offset-4" onClick={onEnableChange}>
           Use change plates
         </button>

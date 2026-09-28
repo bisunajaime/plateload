@@ -457,8 +457,10 @@ export const BARS: BarDef[] = [
     id: 'custom',
     label: 'Custom bar',
     short: 'Custom',
+    // Until a weight is typed, the standard bar of each unit — 20 kg, 45 lb.
+    // Not 20 kg converted: 44.09 lb put every total on a .09 fraction.
     kg: 20,
-    lb: 44.09,
+    lb: 45,
     brand: null,
     lengthMm: 2200,
     shaftMm: 28,

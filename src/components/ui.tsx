@@ -133,7 +133,11 @@ export function Sheet({
       document.removeEventListener('keydown', onKey)
       window.clearTimeout(t)
       document.body.style.overflow = ''
-      restore.current?.focus?.()
+      // The control that opened the sheet may be gone — a favourite just
+      // removed. Land on the main content rather than dropping to <body>.
+      const back = restore.current?.isConnected ? restore.current : document.getElementById('main')
+      if (back?.id === 'main' && !back.hasAttribute('tabindex')) back.setAttribute('tabindex', '-1')
+      back?.focus?.({ preventScroll: true })
     }
   }, [open])
 
