@@ -36,7 +36,7 @@ export const ComboCard = memo(function ComboCard({
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className="h-24 w-32 shrink-0 rounded-xl bg-surface2/70 p-1.5 sm:h-28 sm:w-44">
+        <div className="h-24 w-28 shrink-0 rounded-xl bg-surface2/70 p-1.5 sm:h-28 sm:w-44">
           <SleeveThumb
             plates={plates}
             combo={combo}
@@ -46,34 +46,13 @@ export const ComboCard = memo(function ComboCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="truncate text-lg font-semibold tabular-nums">{list}</span>
-            <span className="text-sm text-muted">each side</span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted tabular-nums">
-            <span>
-              {combo.plateCount} plate{combo.plateCount === 1 ? '' : 's'} a side
+          {/* "Each side" lives in the list heading — it is the same on every card. */}
+          <div className="truncate text-lg font-semibold tabular-nums">{list}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted tabular-nums">
+            <span className="whitespace-nowrap">
+              {combo.plateCount} plate{combo.plateCount === 1 ? '' : 's'}
+              {combo.changeCount > 0 && ` · ${combo.changeCount} change`}
             </span>
-            <span aria-hidden="true">·</span>
-            <span className={combo.overCapacity ? 'font-semibold text-bad' : ''}>
-              {Math.round(combo.sleeveMm)} / {sleeveMm} mm sleeve
-            </span>
-            {combo.changeCount > 0 && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>
-                  {combo.changeCount} change plate{combo.changeCount === 1 ? '' : 's'}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface2" role="img" aria-label={`Sleeve ${Math.round(fill * 100)} percent full`}>
-              <div
-                className={`h-full rounded-full ${combo.overCapacity ? 'bg-bad' : fill > 0.85 ? 'bg-ink' : 'bg-steel'}`}
-                style={{ width: `${fill * 100}%` }}
-              />
-            </div>
             {combo.competitionLegal && (
               <span className="rounded-full bg-ink/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink">
                 Competition
@@ -84,6 +63,21 @@ export const ComboCard = memo(function ComboCard({
                 Overfull
               </span>
             )}
+          </div>
+          {/* The fill bar and its figure sit together, so the bar reads as the sleeve. */}
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface2" aria-hidden="true">
+              <div
+                className={`h-full rounded-full ${combo.overCapacity ? 'bg-bad' : fill > 0.85 ? 'bg-ink' : 'bg-steel'}`}
+                style={{ width: `${fill * 100}%` }}
+              />
+            </div>
+            <span
+              className={`shrink-0 whitespace-nowrap text-xs tabular-nums ${combo.overCapacity ? 'font-semibold text-bad' : 'text-muted'}`}
+              aria-label={`${Math.round(combo.sleeveMm)} of ${sleeveMm} millimetres of sleeve used`}
+            >
+              {Math.round(combo.sleeveMm)}/{sleeveMm} mm
+            </span>
           </div>
         </div>
       </div>

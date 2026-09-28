@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -16,7 +17,9 @@ export default defineConfig({
         background_color: '#0c0c0d',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
+        // The calculator lives at /app/; the landing page has the root. Scope stays
+        // at / so installs made when the app was at the root keep working.
+        start_url: '/app/',
         scope: '/',
         categories: ['sports', 'health', 'utilities'],
         icons: [
@@ -27,6 +30,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Offline, an unknown path opens the calculator rather than the landing page.
+        navigateFallback: '/app/index.html',
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
@@ -41,5 +46,14 @@ export default defineConfig({
       },
     }),
   ],
-  build: { target: 'es2020' },
+  build: {
+    target: 'es2020',
+    rollupOptions: {
+      input: {
+        // The landing page at /, the calculator at /app/.
+        landing: fileURLToPath(new URL('./index.html', import.meta.url)),
+        app: fileURLToPath(new URL('./app/index.html', import.meta.url)),
+      },
+    },
+  },
 })

@@ -1,0 +1,449 @@
+/* PlateLoad landing — a competition platform at night: chalk, steel, and the
+   IWF plate colours as the only colour on the page. */
+
+.landing {
+  --red: #c8102e;
+  --blue: #0033a0;
+  --yellow: #ffd100;
+  --green: #007a33;
+  --chalk: #f4f1eb;
+  --floor: #0b0b0c;
+  --panel: #131315;
+  background-color: var(--floor);
+  color: var(--chalk);
+  font-family: 'Barlow', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 16px;
+}
+.landing .font-display { font-family: 'Unbounded', 'Barlow', system-ui, sans-serif; }
+.landing .font-cond,
+.landing .eyebrow { font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; }
+
+/* ------------------------------------------------------------------ chrome */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: rgb(11 11 12 / 0.78);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+.nav-link {
+  min-height: 44px;
+  align-items: center;
+  padding: 0 0.85rem;
+  border-radius: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.7);
+  transition: color 150ms, background-color 150ms;
+}
+.nav-link:hover { color: #fff; background: rgb(255 255 255 / 0.06); }
+
+/* Five plate colours, stacked like a loaded sleeve. */
+.stripe-mark {
+  width: 18px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--red) 0 20%, var(--blue) 20% 40%, var(--yellow) 40% 60%, var(--green) 60% 80%, var(--chalk) 80% 100%
+  );
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--yellow);
+}
+.eyebrow::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+.cta-primary,
+.cta-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border-radius: 0.85rem;
+  background: var(--chalk);
+  color: #0b0b0c;
+  font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms, background-color 160ms;
+}
+.cta-primary {
+  min-height: 56px;
+  padding: 0 1.6rem;
+  font-size: 1.15rem;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 10px 30px -10px rgb(244 241 235 / 0.35);
+}
+.cta-primary:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 16px 36px -12px rgb(244 241 235 / 0.45); }
+.cta-primary:active { transform: translateY(0) scale(0.98); }
+.cta-primary svg { transition: transform 160ms; }
+.cta-primary:hover svg { transform: translateX(3px); }
+.cta-small {
+  min-height: 44px;
+  padding: 0 1rem;
+  font-size: 1rem;
+}
+.cta-small:hover { background: #fff; }
+
+.landing :where(a, button, input):focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 3px;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+/* --------------------------------------------------------------------- hero */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  /* Chalk dust on rubber flooring. */
+  background-image:
+    radial-gradient(60% 50% at 18% 10%, rgb(244 241 235 / 0.07), transparent 70%),
+    radial-gradient(45% 40% at 85% 35%, rgb(200 16 46 / 0.10), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.hero-copy > * { animation: rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.hero-copy > :nth-child(2) { animation-delay: 80ms; }
+.hero-copy > :nth-child(3) { animation-delay: 160ms; }
+.hero-copy > :nth-child(4) { animation-delay: 240ms; }
+.demo { animation: rise 800ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* A chalk swipe under the key word. */
+.chalk-underline {
+  position: relative;
+  white-space: nowrap;
+}
+.chalk-underline::after {
+  content: '';
+  position: absolute;
+  left: -0.04em;
+  right: -0.08em;
+  bottom: -0.02em;
+  height: 0.16em;
+  border-radius: 999px;
+  background: var(--yellow);
+  transform-origin: left center;
+  animation: swipe 700ms 600ms cubic-bezier(0.6, 0, 0.2, 1) both;
+  z-index: -1;
+}
+@keyframes swipe {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ------------------------------------------------------------------ demo */
+
+.scoreboard {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-bottom: 0;
+  border-radius: 1.25rem 1.25rem 0 0;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 40%),
+    #0e0e10;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset;
+}
+.platform {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0 0 1.25rem 1.25rem;
+  /* Platform wood, lit from above. */
+  background:
+    radial-gradient(90% 70% at 50% 0%, rgb(255 255 255 / 0.07), transparent 70%),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.018) 0 2px, transparent 2px 120px),
+    var(--panel);
+  box-shadow: 0 40px 80px -40px rgb(0 0 0 / 0.9);
+}
+
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.live-dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--red);
+  box-shadow: 0 0 0 0 rgb(200 16 46 / 0.6);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgb(200 16 46 / 0.55); }
+  70% { box-shadow: 0 0 0 8px rgb(200 16 46 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(200 16 46 / 0); }
+}
+
+.brand-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 0.7rem;
+  background: rgb(255 255 255 / 0.06);
+}
+.brand-switch button {
+  min-height: 38px;
+  padding: 0 0.75rem;
+  border-radius: 0.55rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.55);
+  transition: background-color 150ms, color 150ms;
+}
+.brand-switch button[aria-pressed='true'] { background: var(--chalk); color: #0b0b0c; }
+
+.plate-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  min-width: 2.6rem;
+  justify-content: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.45rem;
+  font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.2), inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.step-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: rgb(255 255 255 / 0.04);
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #fff;
+  transition: background-color 150ms, transform 120ms;
+}
+.step-btn:hover { background: rgb(255 255 255 / 0.1); }
+.step-btn:active { transform: scale(0.94); }
+
+/* The slider is a barbell shaft: knurled track, chalk where you have loaded. */
+.knurl {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  background: transparent;
+  cursor: pointer;
+}
+.knurl::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--chalk) var(--fill), transparent var(--fill)),
+    repeating-linear-gradient(45deg, #5b5f66 0 2px, #3a3d42 2px 4px);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.6);
+}
+.knurl::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(45deg, #5b5f66 0 2px, #3a3d42 2px 4px);
+}
+.knurl::-moz-range-progress { height: 10px; border-radius: 999px; background: var(--chalk); }
+.knurl::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -9px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff, #c9ccd1 60%, #8d9299);
+  border: 3px solid #0b0b0c;
+  box-shadow: 0 0 0 2px var(--chalk), 0 4px 10px rgb(0 0 0 / 0.5);
+}
+.knurl::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff, #c9ccd1 60%, #8d9299);
+  border: 3px solid #0b0b0c;
+  box-shadow: 0 0 0 2px var(--chalk);
+}
+
+.attempt-chip {
+  min-height: 44px;
+  min-width: 56px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.85);
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+.attempt-chip:hover { background: rgb(255 255 255 / 0.07); }
+.attempt-chip[aria-pressed='true'] { background: var(--yellow); border-color: var(--yellow); color: #0b0b0c; }
+
+/* ------------------------------------------------------------------ marquee */
+
+.marquee {
+  overflow: hidden;
+  border-block: 1px solid rgb(255 255 255 / 0.1);
+  background: #0e0e10;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 38s linear infinite;
+}
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.1rem 2.1rem;
+  font-family: 'Unbounded', 'Barlow', system-ui, sans-serif;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 800;
+  color: transparent;
+  -webkit-text-stroke: 1.25px rgb(244 241 235 / 0.35);
+}
+.marquee-dot {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.25);
+}
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* ------------------------------------------------------------- attempts */
+
+.attempt {
+  position: relative;
+  padding: 1.6rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 60%), var(--panel);
+  overflow: hidden;
+}
+.attempt::after {
+  /* A chalk handprint of light in the corner. */
+  content: '';
+  position: absolute;
+  inset: auto -30% -60% auto;
+  width: 70%;
+  aspect-ratio: 1;
+  background: radial-gradient(closest-side, rgb(244 241 235 / 0.06), transparent);
+  pointer-events: none;
+}
+
+.judge {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #26272b;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.7);
+  transition: background-color 260ms, box-shadow 260ms;
+}
+.judge.is-on {
+  background: #fff;
+  box-shadow: 0 0 12px 2px rgb(255 255 255 / 0.55), inset 0 -1px 2px rgb(0 0 0 / 0.15);
+}
+
+/* ------------------------------------------------------------- features */
+
+.features {
+  background:
+    radial-gradient(50% 60% at 100% 0%, rgb(0 51 160 / 0.14), transparent 70%),
+    #0e0e10;
+  border-block: 1px solid rgb(255 255 255 / 0.08);
+}
+.feature {
+  padding: 1.75rem;
+  background: var(--floor);
+  transition: background-color 200ms;
+}
+.feature:hover { background: #121214; }
+
+/* A plate seen edge-on: coloured face, dark rubber rim. */
+.feature-plate {
+  display: block;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, #0b0b0c 0 18%, #b9bfc6 18% 25%, var(--plate) 25% 78%, rgb(0 0 0 / 0.35) 78% 84%, var(--plate) 84%);
+  box-shadow: 0 6px 18px -6px var(--plate);
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.feature:hover .feature-plate { transform: rotate(120deg); }
+
+/* ------------------------------------------------------------- final CTA */
+
+.final {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.final::before {
+  /* The five colours of a loaded bar, fanned out behind the headline. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(40% 55% at 50% 100%, rgb(255 209 0 / 0.12), transparent 70%),
+    linear-gradient(
+      100deg,
+      transparent 0 20%,
+      rgb(200 16 46 / 0.07) 20% 32%,
+      rgb(0 51 160 / 0.07) 32% 44%,
+      rgb(255 209 0 / 0.05) 44% 56%,
+      rgb(0 122 51 / 0.07) 56% 68%,
+      rgb(244 241 235 / 0.04) 68% 80%,
+      transparent 80%
+    );
+}
+
+/* ----------------------------------------------------------------- reveal */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal.is-in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; }
+  .marquee-track { animation: none; }
+  .live-dot::before { animation: none; }
+}

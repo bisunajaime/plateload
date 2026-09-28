@@ -15,7 +15,7 @@ installs as a PWA and works offline after the first load.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # landing page at http://localhost:5173, the calculator at /app/
 ```
 
 ```bash

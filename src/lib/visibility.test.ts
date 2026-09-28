@@ -47,4 +47,11 @@ describe('the floating preview', () => {
     expect(shows(-100)).toBe(true) // only a sliver under the header
     expect(shows(-260)).toBe(true) // scrolled past it
   })
+
+  it('a tall element counts once enough pixels show, whatever the fraction', () => {
+    const list = { top: VIEWPORT - 200, bottom: VIEWPORT + 1800, height: 2000 }
+    expect(visibilityOf(list, VIEWPORT, HEADER).onScreen).toBe(false)
+    expect(visibilityOf(list, VIEWPORT, HEADER, 1, 160).onScreen).toBe(true)
+    expect(visibilityOf({ ...list, top: VIEWPORT - 100 }, VIEWPORT, HEADER, 1, 160).onScreen).toBe(false)
+  })
 })

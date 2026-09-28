@@ -65,7 +65,9 @@ export function ComboList({
     <section aria-label="Combinations" className="flex flex-col gap-3">
       {/* The answer leads. The count is the way in to the rest, not the headline. */}
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">How to load it</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">
+          How to load it <span className="font-medium normal-case tracking-normal">· each side</span>
+        </h2>
         {choosable && (
           <button
             type="button"

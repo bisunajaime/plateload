@@ -14,7 +14,7 @@ import { comboTotal, smallestIncrement, solve, type Combo } from './lib/combinat
 import { fmt } from './lib/format'
 import { buildSolveInput, resolveLoadout } from './lib/settings'
 import { nextJump } from './lib/warmup'
-import { useVisibility } from './hooks/useOnScreen'
+import { useHasScrolled, useVisibility } from './hooks/useOnScreen'
 import { prefersReducedMotion, useSettings } from './hooks/useSettings'
 
 export default function App() {
@@ -95,17 +95,22 @@ export default function App() {
 
   const animate = !prefersReducedMotion()
 
-  // Whenever the hero bar is off screen — above you or still below — a
-  // thumbnail of the load stands in for it.
+  // A thumbnail of the load stands in for the hero bar once you have scrolled
+  // away from it — but not over the combination list, whose cards already
+  // draw every sleeve, and not before you have scrolled at all.
   const heroRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const hero = useVisibility(heroRef)
+  const list = useVisibility(listRef, 72, 1, 160)
+  const scrolled = useHasScrolled()
+  const showPreview = !hero.onScreen && !list.onScreen && (scrolled || hero.passed)
 
   return (
     <div className="min-h-dvh">
       <Header settings={settings} update={update} setBrand={setBrand} onSettings={() => setSetupOpen(true)} />
 
       <main id="main" className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-5 lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:items-start">
-        {/* ------------------------------------------------------- controls */}
+        {/* --------------------------------------------------------- target */}
         <div className="order-1 flex min-w-0 flex-col gap-4">
           <WeightInput
             value={settings.target}
@@ -117,7 +122,100 @@ export default function App() {
             quickSteps={quickSteps}
             showHint={settings.lastWeights.length === 0}
           />
+        </div>
 
+        {/* ------------------------------------------------------ hero + list */}
+        {/* The answer comes straight after the target on a phone; on desktop it is the right-hand column. */}
+        <div className="order-2 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <section
+            ref={heroRef}
+            className="card platform-grain scroll-mt-20 overflow-hidden"
+            aria-label="Loaded barbell"
+          >
+            <div className={`hide-scroll flex overflow-x-auto ${zoom > 1 ? '' : 'justify-center'}`}>
+              <BarbellSVG
+                bar={loadout.bar}
+                plates={loadout.plates}
+                combo={selected}
+                collarKind={collarKind}
+                collarWidthMm={collarWidth}
+                unit={settings.unit}
+                showLabels={settings.showLabels}
+                closeUp={settings.closeUp}
+                animate={animate}
+                zoom={zoom}
+                maxHeightPx={360}
+                className="block h-auto"
+              />
+            </div>
+            <div className="hide-scroll flex items-center gap-2 overflow-x-auto border-t border-line px-3 py-2">
+              <button
+                className="chip"
+                aria-pressed={settings.closeUp}
+                onClick={() => update({ closeUp: !settings.closeUp })}
+                title="Zoom to one sleeve"
+              >
+                <ZoomIcon />
+                Sleeve
+              </button>
+              <button
+                className="chip"
+                aria-pressed={settings.showLabels}
+                onClick={() => update({ showLabels: !settings.showLabels })}
+              >
+                <TagIcon />
+                Labels
+              </button>
+              <button className="chip" onClick={() => setZoom((z) => (z >= 2.4 ? 1 : z + 0.7))} title="Magnify the bar">
+                {zoom > 1 ? `${zoom.toFixed(1)}×` : 'Zoom'}
+              </button>
+              {selected && (
+                <span className="ml-auto shrink-0 pl-2 text-xs text-muted tabular-nums">
+                  {Math.round(selected.sleeveMm)} / {loadout.sleeveMm} mm
+                </span>
+              )}
+            </div>
+          </section>
+
+          <div ref={listRef} className="min-w-0">
+            {result.ok ? (
+              <ComboList
+                combos={result.combos}
+                mode={settings.mode}
+                onMode={(mode) => update({ mode })}
+                plates={loadout.plates}
+                collarKind={collarKind}
+                collarWidthMm={collarWidth}
+                sleeveMm={loadout.sleeveMm}
+                selectedId={selected?.id ?? null}
+                onSelect={(c) => {
+                  setSelectedId(c.id)
+                  if ('vibrate' in navigator) navigator.vibrate?.(10)
+                }}
+                truncated={result.truncated}
+                totalFound={result.totalFound}
+              />
+            ) : (
+              <EmptyState
+                reason={result.reason}
+                target={settings.target}
+                unit={settings.unit}
+                base={loadout.base}
+                nearestBelow={result.nearestBelow}
+                nearestAbove={result.nearestAbove}
+                onPick={pick}
+                changeOff={!settings.includeChange}
+                onEnableChange={() => update({ includeChange: true })}
+                onOpenSetup={() => setSetupOpen(true)}
+                smallestStep={result.smallestStep}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ------------------------------------------- breakdown, saved, tools */}
+        {/* Below the answer on a phone; under the target in the left column on desktop. */}
+        <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
           {/* live breakdown */}
           <section className={`card px-4 py-3 ${RAIL.steel}`} aria-label="Weight breakdown">
             <SectionHeader icon={<ScaleIcon />} tone="steel">
@@ -275,97 +373,6 @@ export default function App() {
             </section>
           )}
 
-        </div>
-
-        {/* ------------------------------------------------------ hero + list */}
-        {/* The answer comes straight after the target on a phone; on desktop it is the right-hand column. */}
-        <div className="order-2 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <section
-            ref={heroRef}
-            className="card platform-grain scroll-mt-20 overflow-hidden"
-            aria-label="Loaded barbell"
-          >
-            <div className={`hide-scroll flex overflow-x-auto ${zoom > 1 ? '' : 'justify-center'}`}>
-              <BarbellSVG
-                bar={loadout.bar}
-                plates={loadout.plates}
-                combo={selected}
-                collarKind={collarKind}
-                collarWidthMm={collarWidth}
-                unit={settings.unit}
-                showLabels={settings.showLabels}
-                closeUp={settings.closeUp}
-                animate={animate}
-                zoom={zoom}
-                maxHeightPx={360}
-                className="block h-auto"
-              />
-            </div>
-            <div className="hide-scroll flex items-center gap-2 overflow-x-auto border-t border-line px-3 py-2">
-              <button
-                className="chip"
-                aria-pressed={settings.closeUp}
-                onClick={() => update({ closeUp: !settings.closeUp })}
-                title="Zoom to one sleeve"
-              >
-                <ZoomIcon />
-                Sleeve
-              </button>
-              <button
-                className="chip"
-                aria-pressed={settings.showLabels}
-                onClick={() => update({ showLabels: !settings.showLabels })}
-              >
-                <TagIcon />
-                Labels
-              </button>
-              <button className="chip" onClick={() => setZoom((z) => (z >= 2.4 ? 1 : z + 0.7))} title="Magnify the bar">
-                {zoom > 1 ? `${zoom.toFixed(1)}×` : 'Zoom'}
-              </button>
-              {selected && (
-                <span className="ml-auto shrink-0 pl-2 text-xs text-muted tabular-nums">
-                  {Math.round(selected.sleeveMm)} / {loadout.sleeveMm} mm
-                </span>
-              )}
-            </div>
-          </section>
-
-          {result.ok ? (
-            <ComboList
-              combos={result.combos}
-              mode={settings.mode}
-              onMode={(mode) => update({ mode })}
-              plates={loadout.plates}
-              collarKind={collarKind}
-              collarWidthMm={collarWidth}
-              sleeveMm={loadout.sleeveMm}
-              selectedId={selected?.id ?? null}
-              onSelect={(c) => {
-                setSelectedId(c.id)
-                if ('vibrate' in navigator) navigator.vibrate?.(10)
-              }}
-              truncated={result.truncated}
-              totalFound={result.totalFound}
-            />
-          ) : (
-            <EmptyState
-              reason={result.reason}
-              target={settings.target}
-              unit={settings.unit}
-              base={loadout.base}
-              nearestBelow={result.nearestBelow}
-              nearestAbove={result.nearestAbove}
-              onPick={pick}
-              changeOff={!settings.includeChange}
-              onEnableChange={() => update({ includeChange: true })}
-              onOpenSetup={() => setSetupOpen(true)}
-              smallestStep={result.smallestStep}
-            />
-          )}
-        </div>
-
-        {/* ---------------------------------------------------------- tools */}
-        <div className="order-3 flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
           <WarmupPanel
             input={input}
             unit={settings.unit}
@@ -383,12 +390,17 @@ export default function App() {
               {selected ? `${fmt(comboTotal(selected, input))} ${settings.unit} on the bar.` : 'Nothing loaded.'} Works
               offline once installed.
             </p>
+            <p className="mt-1">
+              <a href="/" className="underline decoration-line underline-offset-2 hover:text-ink">
+                About PlateLoad
+              </a>
+            </p>
           </footer>
         </div>
       </main>
 
       <MiniBar
-        show={!hero.onScreen}
+        show={showPreview}
         bar={loadout.bar}
         plates={loadout.plates}
         combo={selected}
