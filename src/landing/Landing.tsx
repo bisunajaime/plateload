@@ -6,6 +6,8 @@ import { snapToLoadable, solve } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, buildSolveInput, defaultSettings, resolveLoadout } from '../lib/settings'
 import { prefersReducedMotion } from '../hooks/useSettings'
+import { LoadingBay, RollingPlate, ScrollMarquee } from './scroll'
+import { useScrollVar } from './useScroll'
 
 const APP_URL = '/app/'
 
@@ -266,8 +268,11 @@ const FEATURES: { color: string; title: string; body: string }[] = [
 /* -------------------------------------------------------------------- page */
 
 export function Landing() {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useScrollVar(rootRef)
+
   return (
-    <div className="landing min-h-dvh overflow-x-clip">
+    <div ref={rootRef} className="landing min-h-dvh overflow-x-clip">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-black">
         Skip to content
       </a>
@@ -322,30 +327,10 @@ export function Landing() {
         </section>
 
         {/* ---------------------------------------------- plate marquee */}
-        <div className="marquee" aria-hidden="true">
-          <div className="marquee-track">
-            {Array.from({ length: 2 }, (_, k) => (
-              <div key={k} className="flex shrink-0 items-center">
-                {[
-                  ['25', IWF.red],
-                  ['20', IWF.blue],
-                  ['15', IWF.yellow],
-                  ['10', IWF.green],
-                  ['5', IWF.white],
-                  ['2.5', IWF.red],
-                  ['1.25', '#B9BFC6'],
-                  ['45', IWF.blue],
-                  ['35', IWF.yellow],
-                ].map(([w, c], i) => (
-                  <span key={i} className="marquee-item">
-                    <span className="marquee-dot" style={{ background: c }} />
-                    {w}
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+        <ScrollMarquee />
+
+        {/* ------------------------------------------------- loading bay */}
+        <LoadingBay />
 
         {/* ------------------------------------------------- how it works */}
         <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20 sm:px-6 sm:py-28">
@@ -373,8 +358,9 @@ export function Landing() {
         </section>
 
         {/* ----------------------------------------------------- features */}
-        <section id="features" className="features scroll-mt-20">
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+        <section id="features" className="features relative scroll-mt-20">
+          <RollingPlate weight="25" color={IWF.red} size={340} className="-right-24 top-16 sm:right-[-60px]" />
+          <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
             <Reveal className="grid gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-end">
               <div>
                 <p className="eyebrow">Built for the platform</p>
@@ -404,7 +390,8 @@ export function Landing() {
 
         {/* ---------------------------------------------------- final CTA */}
         <section className="final">
-          <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 sm:py-32">
+          <RollingPlate weight="20" color={IWF.blue} size={260} direction={-1} className="-left-20 bottom-6" />
+          <div className="relative mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 sm:py-32">
             <Reveal>
               <p className="eyebrow justify-center">Your next set is waiting</p>
               <h2 className="mx-auto mt-5 max-w-3xl font-display text-[40px] font-extrabold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
