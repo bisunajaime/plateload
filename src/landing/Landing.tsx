@@ -6,6 +6,7 @@ import { snapToLoadable, solve } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, buildSolveInput, defaultSettings, resolveLoadout } from '../lib/settings'
 import { prefersReducedMotion } from '../hooks/useSettings'
+import { RollingNumber } from './RollingNumber'
 import { LoadingBay, RollingPlate, ScrollMarquee } from './scroll'
 import { useScrollVar } from './useScroll'
 
@@ -13,12 +14,21 @@ const APP_URL = '/app/'
 
 /** Weights a meet would call — one tap each in the demo. */
 const ATTEMPTS: Record<Brand, number[]> = {
-  eleiko: [60, 100, 142.5, 180],
+  eleiko: [60, 100, 140, 180],
   metcon: [135, 225, 315, 405],
 }
+// Whole numbers only on this page: 5 kg steps from Eleiko's 25 kg bar and
+// collars. A half kilo made the headline number change width and the layout
+// around it jump; the calculator itself still loads every half.
 const RANGE: Record<Brand, { max: number; step: number }> = {
-  eleiko: { max: 250, step: 2.5 },
+  eleiko: { max: 250, step: 5 },
   metcon: { max: 550, step: 5 },
+}
+
+/** Onto the demo's step grid from the bar up, within its range. */
+const onGrid = (brand: Brand, w: number, base: number) => {
+  const { max, step } = RANGE[brand]
+  return Math.min(max, Math.max(base, base + Math.round((w - base) / step) * step))
 }
 
 /* ------------------------------------------------------------------ reveal */
@@ -62,8 +72,8 @@ const appLink = (brand: Brand, target: number) =>
   `${APP_URL}?${new URLSearchParams({ w: String(target), brand }).toString()}`
 
 function Demo() {
-  const [brand, setBrand] = useState<Brand>('eleiko')
-  const [target, setTarget] = useState(142.5)
+  const [brand, setBrand] = useState<Brand>('metcon')
+  const [target, setTarget] = useState(225)
   const animate = !prefersReducedMotion()
 
   const settings = useMemo(() => ({ ...applyBrand(defaultSettings(), brand), target, closeUp: false }), [brand, target])
@@ -76,14 +86,15 @@ function Demo() {
   const unit = settings.unit
   const { max, step } = RANGE[brand]
   const min = loadout.base
-  const set = (w: number) => setTarget(snapToLoadable(input, Math.min(max, Math.max(min, w))))
+  const set = (w: number) => setTarget(snapToLoadable(input, onGrid(brand, w, min)))
 
   const switchBrand = (b: Brand) => {
     if (b === brand) return
     setBrand(b)
     // Same real load, the other plate system — then snapped to what that gym can build.
     const next = applyBrand(settings, b)
-    setTarget(snapToLoadable(buildSolveInput(next), next.target))
+    const nextInput = buildSolveInput(next)
+    setTarget(snapToLoadable(nextInput, onGrid(b, next.target, resolveLoadout(next).base)))
   }
 
   const pctOfRange = ((target - min) / (max - min)) * 100
@@ -107,9 +118,10 @@ function Demo() {
 
         <div className="grid gap-4 px-4 pb-4 pt-3 sm:grid-cols-[auto_1fr] sm:items-end sm:gap-6 sm:px-5">
           <div className="flex items-baseline gap-2" aria-live="polite">
-            <span className="font-cond text-[76px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[96px]">
-              {fmt(target)}
-            </span>
+            <RollingNumber
+              value={target}
+              className="font-cond text-[76px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[96px]"
+            />
             <span className="font-cond text-2xl font-semibold uppercase text-white/50">{unit}</span>
           </div>
 

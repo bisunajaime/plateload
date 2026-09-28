@@ -524,6 +524,50 @@
 .bay-mark.is-on:nth-child(5),
 .bay-mark.is-on:nth-child(7) { color: #0b0b0c; }
 
+/* --------------------------------------------------------- rolling number */
+
+/* Room above and below the glyphs, faded out, so a digit blurs away into the
+   edge instead of being cut off by it. */
+.roll {
+  display: inline-block;
+  padding-block: 0.28em;
+  margin-block: -0.28em;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
+}
+.roll-digits { display: inline-flex; }
+.roll-slot { position: relative; display: inline-block; }
+.roll-in,
+.roll-out {
+  display: inline-block;
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+  will-change: transform, filter, opacity;
+}
+.roll-out { position: absolute; inset: 0; }
+.roll-in.up { animation-name: roll-in-up; }
+.roll-out.up { animation-name: roll-out-up; }
+.roll-in.down { animation-name: roll-in-down; }
+.roll-out.down { animation-name: roll-out-down; }
+
+@keyframes roll-in-up {
+  from { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+  to { transform: none; filter: blur(0); opacity: 1; }
+}
+@keyframes roll-out-up {
+  from { transform: none; filter: blur(0); opacity: 1; }
+  to { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+}
+@keyframes roll-in-down {
+  from { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+  to { transform: none; filter: blur(0); opacity: 1; }
+}
+@keyframes roll-out-down {
+  from { transform: none; filter: blur(0); opacity: 1; }
+  to { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+}
+
 /* ---------------------------------------------------------- rolling plate */
 
 .features,
@@ -553,4 +597,5 @@
   .reveal { opacity: 1; transform: none; }
   .live-dot::before { animation: none; }
   .feature-plate { transform: none; }
+  .roll-out { display: none; }
 }

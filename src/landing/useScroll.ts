@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { prefersReducedMotion } from '../hooks/useSettings'
 
 export const clamp = (n: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, n))
@@ -46,30 +46,6 @@ export function pinnedProgress(el: Element): number {
 export function passProgress(el: Element): number {
   const r = el.getBoundingClientRect()
   return clamp((window.innerHeight - r.top) / (window.innerHeight + r.height))
-}
-
-/** Eases a displayed number toward `value`, so the scoreboard counts rather than jumps. */
-export function useCountUp(value: number, ms = 360): number {
-  const [shown, setShown] = useState(value)
-  const from = useRef(value)
-  const reduced = prefersReducedMotion()
-  useEffect(() => {
-    if (reduced) {
-      from.current = value
-      return
-    }
-    const start = performance.now()
-    const a = from.current
-    let raf = requestAnimationFrame(function step(now) {
-      const t = clamp((now - start) / ms)
-      const v = a + (value - a) * (1 - (1 - t) ** 3)
-      from.current = v
-      setShown(v)
-      if (t < 1) raf = requestAnimationFrame(step)
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [value, ms, reduced])
-  return reduced ? value : shown
 }
 
 /** Writes the page's scroll position to `--scroll` on the landing root, for effects that turn with it. */

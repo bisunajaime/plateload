@@ -5,7 +5,8 @@ import type { Combo } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, defaultSettings, resolveLoadout } from '../lib/settings'
 import { prefersReducedMotion } from '../hooks/useSettings'
-import { clamp, passProgress, pinnedProgress, useCountUp, useScrollFrame } from './useScroll'
+import { RollingNumber } from './RollingNumber'
+import { clamp, passProgress, pinnedProgress, useScrollFrame } from './useScroll'
 
 /* ------------------------------------------------------------ loading bay */
 
@@ -61,7 +62,6 @@ export function LoadingBay() {
 
   const combo = stage > 0 ? stages[stage - 1] : null
   const total = loadout.base + (combo ? combo.perSide * 2 : 0)
-  const shown = useCountUp(total)
   const added = stage > 0 ? byWeight.get(SEQUENCE[stage - 1]) : null
 
   return (
@@ -76,9 +76,10 @@ export function LoadingBay() {
               </h2>
             </div>
             <div className="flex items-baseline gap-2 lg:justify-end" aria-live="polite" aria-atomic="true">
-              <span className="font-cond text-[72px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[104px]">
-                {fmt(Math.round(shown * 2) / 2)}
-              </span>
+              <RollingNumber
+                value={total}
+                className="font-cond text-[72px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[104px]"
+              />
               <span className="font-cond text-2xl font-semibold uppercase text-white/50">kg</span>
             </div>
           </div>
