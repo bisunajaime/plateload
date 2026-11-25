@@ -151,21 +151,25 @@ export function RollingPlate({
   className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const face = useRef<SVGSVGElement>(null)
 
+  // The wrapper travels and carries the shadow; only the face turns. Rotating
+  // the element with the drop-shadow made the shadow orbit the plate.
   useScrollFrame(() => {
     const el = ref.current
     const host = el?.parentElement
-    if (!el || !host || prefersReducedMotion()) return
+    if (!el || !host || !face.current || prefersReducedMotion()) return
     const p = passProgress(host)
     const travel = Math.min(window.innerWidth, 1200) * 0.9
     const x = (p - 0.5) * travel * direction
     const turns = x / (size / 2) // radians rolled = distance / radius
-    el.style.transform = `translate3d(${x}px, 0, 0) rotate(${turns}rad)`
+    el.style.transform = `translate3d(${x}px, 0, 0)`
+    face.current.style.transform = `rotate(${turns}rad)`
   })
 
   return (
     <div ref={ref} className={`rolling-plate ${className}`} style={{ width: size, height: size }} aria-hidden="true">
-      <svg viewBox="-100 -100 200 200" width="100%" height="100%">
+      <svg ref={face} viewBox="-100 -100 200 200" width="100%" height="100%">
         <defs>
           <radialGradient id={`face-${weight}`} cx="0.38" cy="0.32" r="0.8">
             <stop offset="0" stopColor="#fff" stopOpacity="0.18" />
