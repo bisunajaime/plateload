@@ -1,407 +1,83 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ComboList } from './components/ComboList'
+import { useState } from 'react'
+import { AppContext } from './app/context'
+import { useAppModel } from './app/useAppModel'
 import { Header } from './components/Header'
-import { LoadCard } from './components/LoadCard'
-import { MiniBar } from './components/MiniBar'
-import { SaveFavoriteSheet } from './components/SaveFavoriteSheet'
-import { SettingsSheet } from './components/InventoryEditor'
-import { WarmupPanel } from './components/WarmupPanel'
-import { YourWeights } from './components/YourWeights'
-import { Sheet } from './components/ui'
+import { Choice } from './components/kit/Choice'
+import { BrandSheet } from './components/shell/BrandSheet'
+import { TabBar } from './components/shell/TabBar'
 import { Toaster } from './components/Toast'
-import { useToast } from './hooks/useToast'
-import type { Moment } from './components/Celebration'
-import { COLLARS, type Brand, type Unit } from './data/plates'
-import { comboTotal, snapToLoadable, solve, type Combo } from './lib/combinations'
-import { WORLD_RECORD, plateMilestone } from './lib/milestones'
-import { fmt } from './lib/format'
-import { applyBrand, buildSolveInput, resolveLoadout, type Settings } from './lib/settings'
-import { nextJump } from './lib/warmup'
-import { useHasScrolled, useVisibility } from './hooks/useOnScreen'
-import { useSettings } from './hooks/useSettings'
-import { feedback, useReducedMotion } from './feel'
+import { DESKTOP, useMedia } from './hooks/useMedia'
+import type { AppTab } from './lib/settings'
+import { GymScreen } from './screens/GymScreen'
+import { LoadScreen, OtherWays } from './screens/LoadScreen'
+import { SavedScreen } from './screens/SavedScreen'
+import { WarmupScreen } from './screens/WarmupScreen'
 
+function Screen({ tab }: { tab: AppTab }) {
+  switch (tab) {
+    case 'warmup':
+      return <WarmupScreen />
+    case 'saved':
+      return <SavedScreen />
+    case 'gym':
+      return <GymScreen />
+    case 'ways':
+      return <OtherWays />
+    default:
+      return <LoadScreen />
+  }
+}
+
+const PANES: { value: AppTab; label: string }[] = [
+  { value: 'warmup', label: 'Warm-up' },
+  { value: 'ways', label: 'Other ways' },
+  { value: 'saved', label: 'Saved' },
+  { value: 'gym', label: 'Gym' },
+]
+
+/**
+ * Where you are. On a phone, one place at a time with a tab bar under the
+ * thumb. On a desktop the load stays pinned on the left and the tools sit in
+ * a pane beside it.
+ */
 export default function App() {
-  const { settings, update, setTarget, rememberWeight, pickWeight, reset } = useSettings()
-  const [setupOpen, setSetupOpen] = useState(false)
-  const [favOpen, setFavOpen] = useState(false)
-  const [removing, setRemoving] = useState<number | null>(null)
-  // A saved weight in the other unit means the other brand's plates and bar.
-  const [switchTo, setSwitchTo] = useState<{ weight: number; unit: Unit } | null>(null)
-  // A picked combination belongs to the load it was picked for; stepping away
-  // and back must not resurrect a choice made for another weight.
-  const [picked, setPicked] = useState<{ load: string; id: string } | null>(null)
-  const [copied, setCopied] = useState(false)
-  // Picking a combination while the bar is scrolled away flashes the preview, so you see what changed.
-  const [peek, setPeek] = useState(0)
-  const copiedTimer = useRef<number | undefined>(undefined)
-  const { toast, show: showToast, dismiss: dismissToast } = useToast()
-
-  const loadout = useMemo(() => resolveLoadout(settings), [settings])
-  const input = useMemo(() => buildSolveInput(settings), [settings])
-  const result = useMemo(() => solve(input, settings.mode), [input, settings.mode])
-  const jumps = useMemo(() => nextJump(input, settings.target), [input, settings.target])
-
-  // The jumps a lifter actually makes between sets.
-  const quickSteps = settings.unit === 'kg' ? [2.5, 5, 10, 20] : [5, 10, 25, 45]
-
-  const loadKey = `${settings.brand}:${settings.target}:${JSON.stringify(input.denoms.map((d) => d.maxPerSide))}`
-  // Derived during render, no effect: a new load drops the old pick for good.
-  const [prevLoadKey, setPrevLoadKey] = useState(loadKey)
-  if (loadKey !== prevLoadKey) {
-    setPrevLoadKey(loadKey)
-    setPicked(null)
-  }
-  const selectedId = picked?.load === loadKey ? picked.id : null
-  const selected: Combo | null = useMemo(() => {
-    if (!result.ok || result.combos.length === 0) return null
-    return result.combos.find((c) => c.id === selectedId) ?? result.combos[0]
-  }, [result, selectedId])
-
-  // Two plates, three plates: marked once you land there and stay a moment —
-  // not on page load, and not while a held + is rushing past.
-  const [moment, setMoment] = useState<Moment | null>(null)
-  const momentSeq = useRef(0)
-  const milestone = result.ok ? plateMilestone(settings.target, loadout.base, settings.unit) : null
-  const lastMilestone = useRef(milestone)
-  // The caption reads the weight when it fires; only a change of milestone reschedules it.
-  const landedOn = useRef(`${fmt(settings.target)} ${settings.unit}`)
-  useEffect(() => {
-    landedOn.current = `${fmt(settings.target)} ${settings.unit}`
-  })
-  useEffect(() => {
-    if (milestone === lastMilestone.current) return
-    lastMilestone.current = milestone
-    if (!milestone) return
-    const t = window.setTimeout(() => {
-      setMoment({ id: ++momentSeq.current, kind: 'milestone', title: milestone, detail: landedOn.current })
-      feedback('milestone')
-    }, 350)
-    return () => window.clearTimeout(t)
-  }, [milestone])
-
-  /** The hidden one: hold the logo and the world-record clean & jerk goes on the bar. */
-  const loadWorldRecord = () => {
-    const record = snapToLoadable(input, WORLD_RECORD[settings.unit])
-    applyUndoable('World record on the bar.', { target: record })
-    lastMilestone.current = null
-    setMoment({ id: ++momentSeq.current, kind: 'record', title: 'Good lift.', detail: `${fmt(record)} ${settings.unit} · clean & jerk world record` })
-    feedback('milestone', { delay: 480 })
-  }
-
-  const collarKind = settings.collars ? settings.collarKind : null
-  const collarWidth = COLLARS[settings.collarKind].widthMm
-
-  const summary = useMemo(() => {
-    if (!selected) return ''
-    const bar = `${fmt(loadout.barWeight)} ${settings.unit} bar`
-    const collar = settings.collars
-      ? `${COLLARS[settings.collarKind].label.toLowerCase()}${loadout.collarWeight ? ` (${fmt(loadout.collarWeight * 2)} ${settings.unit})` : ''}`
-      : 'no collars'
-    const plates = selected.plates.length
-      ? `${selected.plates.flatMap((p) => Array.from({ length: p.count }, () => fmt(p.weight))).join('/')} each side`
-      : 'no plates'
-    return `${fmt(settings.target)} ${settings.unit} — ${bar}, ${collar}, ${plates}`
-  }, [selected, settings, loadout])
-
-  const copy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(summary)
-      feedback('confirm')
-      setCopied(true)
-      // A second copy restarts the clock rather than being cut short by the first.
-      window.clearTimeout(copiedTimer.current)
-      copiedTimer.current = window.setTimeout(() => setCopied(false), 1600)
-    } catch {
-      feedback('error')
-      showToast({ message: 'Couldn’t copy — this browser blocked the clipboard.', tone: 'bad' })
-    }
-  }, [summary, showToast])
-
-  /**
-   * Changes that rewrite your setup in one tap — a brand switch, a plate
-   * preset — apply at once and offer Undo, instead of asking first. Undo puts
-   * back exactly what the change replaced, and only while those settings are
-   * still as the change left them: it never reverts something done since.
-   */
-  const latest = useRef(settings)
-  useEffect(() => {
-    latest.current = settings
-  })
-  const applyUndoable = (message: string, next: Partial<Settings>) => {
-    const keys = Object.keys(next) as (keyof Settings)[]
-    const before = Object.fromEntries(keys.map((k) => [k, settings[k]])) as Partial<Settings>
-    update(next)
-    showToast({
-      message,
-      action: {
-        label: 'Undo',
-        run: () => {
-          const untouched = keys.every((k) => JSON.stringify(latest.current[k]) === JSON.stringify(next[k]))
-          if (untouched) update(before)
-          else showToast({ message: 'Can’t undo — that’s been changed since.', tone: 'bad' })
-        },
-      },
-    })
-  }
-
-  const switchBrand = (brand: Brand) => {
-    if (brand === settings.brand) return
-    const next = applyBrand(settings, brand)
-    const keys = ['brand', 'unit', 'barId', 'customBarWeight', 'collarKind', 'collarWeight', 'target', 'inventory'] as const
-    applyUndoable(
-      `Switched to ${brand === 'metcon' ? 'Metcon, in pounds' : 'Eleiko, in kilos'}. Bar and collars reset.`,
-      Object.fromEntries(keys.map((k) => [k, next[k]])) as Partial<Settings>,
-    )
-  }
-
-  /** A weight chosen on purpose. Remembered only if the plates can make it. */
-  const pick = useCallback(
-    (w: number) => {
-      setTarget(w)
-      if (solve(buildSolveInput(settings, w, 1)).ok) rememberWeight(w)
-    },
-    [setTarget, rememberWeight, settings],
-  )
-
-  /** A quick jump: at least this far either way, landing on something loadable. */
-  const jump = (delta: number) => {
-    const want = settings.target + delta
-    if (want <= loadout.base) return setTarget(loadout.base)
-    const r = solve(buildSolveInput(settings, want, 1))
-    const landing = r.ok ? want : delta > 0 ? r.nearestAbove : r.nearestBelow
-    setTarget(landing ?? want)
-  }
-
-  // Every favourite is shown whatever its unit — tapping one in the other unit
-  // switches brand with it. The index rides along so removal is unambiguous.
-  const favorites = settings.favorites.map((f, index) => ({ ...f, index }))
-
-  // The star only ever saves — two lifts can share a weight (clean 100, squat 100),
-  // so removal lives in the favourites list where you can see which is which.
-  const addFavorite = () => setFavOpen(true)
-
-  const animate = !useReducedMotion()
-
-  // A thumbnail of the load stands in for the card once you have scrolled
-  // away from it — but not over the combination list, whose rows already
-  // draw every sleeve, and not before you have scrolled at all.
-  const heroRef = useRef<HTMLElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-  const hero = useVisibility(heroRef)
-  const list = useVisibility(listRef, 72, 1, 160)
-  const scrolled = useHasScrolled()
-  const showPreview = !hero.onScreen && !list.onScreen && (scrolled || hero.passed)
+  const app = useAppModel()
+  const [brandOpen, setBrandOpen] = useState(false)
+  const desktop = useMedia(DESKTOP)
+  const { tab } = app.settings
+  const paneTab: AppTab = tab === 'load' ? 'warmup' : tab
+  const phoneTab: AppTab = tab === 'ways' ? 'load' : tab
 
   return (
-    <div className="min-h-dvh">
-      <Header settings={settings} setBrand={switchBrand} onSettings={() => setSetupOpen(true)} onLogoHold={loadWorldRecord} />
+    <AppContext.Provider value={app}>
+      <div className="min-h-dvh pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0">
+        <Header brand={app.settings.brand} onBrand={() => setBrandOpen(true)} onLogoHold={app.loadWorldRecord} />
 
-      {/* One column on a phone, the answer first. On desktop the answer stays
-          pinned on the left while everything optional scrolls on the right. */}
-      <main
-        id="main"
-        className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-3 pb-10 pt-4 sm:px-5 sm:pt-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start lg:gap-8"
-      >
-        <div className="lg:sticky lg:top-[76px]">
-          <LoadCard
-            ref={heroRef}
-            target={settings.target}
-            unit={settings.unit}
-            result={result}
-            combo={selected}
-            bar={loadout.bar}
-            plates={loadout.plates}
-            barWeight={loadout.barWeight}
-            collarWeight={loadout.collarWeight}
-            collarKind={collarKind}
-            collarWidthMm={collarWidth}
-            base={loadout.base}
-            showLabels={settings.showLabels}
-            closeUp={settings.closeUp}
-            animate={animate}
-            down={jumps.down}
-            up={jumps.up}
-            quickSteps={quickSteps}
-            onStep={setTarget}
-            onJump={jump}
-            onEnter={pick}
-            onToggleCloseUp={() => update({ closeUp: !settings.closeUp })}
-            moment={moment}
-            onSave={addFavorite}
-            saved={settings.favorites.some((f) => f.weight === settings.target && f.unit === settings.unit)}
-            onCopy={copy}
-            copied={copied}
-            changeOff={!settings.includeChange}
-            onEnableChange={() => update({ includeChange: true })}
-            onOpenSetup={() => setSetupOpen(true)}
-          />
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-6">
-          <YourWeights
-            favorites={favorites}
-            recents={settings.lastWeights}
-            unit={settings.unit}
-            onPick={(weight, unit) => (unit === settings.unit ? pickWeight(weight, unit) : setSwitchTo({ weight, unit }))}
-            onRemove={setRemoving}
-          />
-
-          {result.ok && (
-            <div ref={listRef}>
-              <ComboList
-                combos={result.combos}
-                mode={settings.mode}
-                onMode={(mode) => update({ mode })}
-                plates={loadout.plates}
-                collarKind={collarKind}
-                collarWidthMm={collarWidth}
-                sleeveMm={loadout.sleeveMm}
-                selectedId={selected?.id ?? null}
-                onSelect={(c) => {
-                  setPicked({ load: loadKey, id: c.id })
-                  feedback('select')
-                  if (!hero.onScreen) setPeek((n) => n + 1)
-                }}
-                truncated={result.truncated}
-                totalFound={result.totalFound}
-              />
+        <main id="main" className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
+          <h1 className="sr-only">PlateLoad</h1>
+          {desktop ? (
+            <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] items-start gap-8">
+              <div className="sticky top-[76px]">
+                <LoadScreen pinned />
+              </div>
+              <div className="flex min-w-0 flex-col gap-6">
+                <Choice label="Tools" value={paneTab} onChange={app.go} options={PANES} />
+                <div key={paneTab} className="fade-up">
+                  <Screen tab={paneTab} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div key={phoneTab} className="fade-up">
+              <Screen tab={phoneTab} />
             </div>
           )}
+        </main>
 
-          <WarmupPanel input={input} unit={settings.unit} target={settings.target} onPick={pick} onPickStep={setTarget} />
-
-          <footer className="px-1 text-xs leading-relaxed text-muted gym-hide">
-            <p>
-              {selected ? `${fmt(comboTotal(selected, input))} ${settings.unit} on the bar. ` : ''}Plate geometry from
-              Eleiko competition specs and the Metcon Group PH bumper range. Works offline once installed.{' '}
-              <a href="/" className="underline decoration-line underline-offset-2 hover:text-ink">
-                About PlateLoad
-              </a>
-            </p>
-          </footer>
-        </div>
-      </main>
-
-      <MiniBar
-        show={showPreview}
-        bar={loadout.bar}
-        plates={loadout.plates}
-        combo={selected}
-        collarKind={collarKind}
-        collarWidthMm={collarWidth}
-        unit={settings.unit}
-        total={settings.target}
-        loadable={result.ok}
-        pos={settings.preview}
-        peek={peek}
-        onMove={(preview) => update({ preview })}
-        animate={animate}
-        onClick={() =>
-          heroRef.current?.scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'start' })
-        }
-      />
-
-      <SettingsSheet
-        open={setupOpen}
-        onClose={() => setSetupOpen(false)}
-        settings={settings}
-        update={update}
-        onInventory={(inventory, label) => {
-          applyUndoable(label, { inventory })
-          feedback('confirm')
-        }}
-        onReset={() => {
-          // Nothing from before a reset can be undone into the fresh state.
-          dismissToast()
-          reset()
-          setSetupOpen(false)
-        }}
-      />
-
-
-      <Sheet
-        open={switchTo !== null}
-        onClose={() => setSwitchTo(null)}
-        title={`Switch to ${switchTo?.unit === 'lb' ? 'Metcon' : 'Eleiko'}?`}
-        footer={
-          <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={() => setSwitchTo(null)}>
-              Stay on {settings.brand === 'metcon' ? 'Metcon' : 'Eleiko'}
-            </button>
-            <button
-              className="btn btn-primary px-5"
-              onClick={() => {
-                if (switchTo) pickWeight(switchTo.weight, switchTo.unit)
-                setSwitchTo(null)
-              }}
-            >
-              Switch and load
-            </button>
-          </div>
-        }
-      >
-        {switchTo && (
-          <p className="text-sm text-muted">
-            <span className="font-semibold text-ink tabular-nums">
-              {fmt(switchTo.weight)} {switchTo.unit}
-            </span>{' '}
-            is {switchTo.unit === 'lb' ? 'a Metcon pound' : 'an Eleiko kilo'} weight. Loading it switches to{' '}
-            {switchTo.unit === 'lb' ? 'Metcon' : 'Eleiko'} plates and that brand’s standard bar and collars.
-          </p>
-        )}
-      </Sheet>
-
-      <Sheet
-        open={removing !== null}
-        onClose={() => setRemoving(null)}
-        title="Remove favourite?"
-        footer={
-          <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={() => setRemoving(null)}>
-              Keep it
-            </button>
-            <button
-              className="btn btn-danger px-5"
-              onClick={() => {
-                update({ favorites: settings.favorites.filter((_, i) => i !== removing) })
-                setRemoving(null)
-              }}
-            >
-              Remove
-            </button>
-          </div>
-        }
-      >
-        {removing !== null && settings.favorites[removing] && (
-          <p className="text-sm text-muted">
-            <span className="font-semibold text-ink">
-              {settings.favorites[removing].label || 'Unnamed'}
-            </span>{' '}
-            —{' '}
-            <span className="tabular-nums text-ink">
-              {fmt(settings.favorites[removing].weight)} {settings.favorites[removing].unit}
-            </span>{' '}
-            will be removed from your favourites. Nothing else changes.
-          </p>
-        )}
-      </Sheet>
-
-      <SaveFavoriteSheet
-        open={favOpen}
-        onClose={() => setFavOpen(false)}
-        target={settings.target}
-        unit={settings.unit}
-        favorites={settings.favorites}
-        onSave={(label) => {
-          setFavOpen(false)
-          update({ favorites: [...settings.favorites, { label, weight: settings.target, unit: settings.unit }] })
-          feedback('confirm')
-          showToast({ message: `Saved ${label ? `${label} · ` : ''}${fmt(settings.target)} ${settings.unit}` })
-        }}
-      />
-
-      <Toaster toast={toast} onDismiss={dismissToast} />
-    </div>
+        {!desktop && <TabBar value={phoneTab} onChange={app.go} />}
+        <BrandSheet open={brandOpen} onClose={() => setBrandOpen(false)} brand={app.settings.brand} onPick={app.switchBrand} />
+        <Toaster toast={app.toast} onDismiss={app.dismissToast} />
+      </div>
+    </AppContext.Provider>
   )
 }

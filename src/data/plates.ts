@@ -525,8 +525,13 @@ export const COLLARS: Record<CollarKind, CollarDef> = {
   },
 }
 
+/**
+ * The collar a gym actually uses: Metcon's Fast Clip, or an ordinary spring
+ * clip on an Eleiko bar. Competition collars (2.5 kg each) are one choice away
+ * in Gym — defaulting to them made a training-hall load 5 kg light.
+ */
 export function defaultCollarKind(brand: Brand): CollarKind {
-  return brand === 'metcon' ? 'metcon-fastclip' : 'eleiko-competition'
+  return brand === 'metcon' ? 'metcon-fastclip' : 'generic'
 }
 
 /* ------------------------------------------------------- inventory presets */

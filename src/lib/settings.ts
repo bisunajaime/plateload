@@ -34,7 +34,24 @@ export interface RecentWeight {
   unit: Unit
 }
 
+/** Where you are in the app. `ways` is a desktop pane; on a phone it lives inside Load. */
+export type AppTab = 'load' | 'warmup' | 'saved' | 'gym' | 'ways'
+export const APP_TABS: AppTab[] = ['load', 'warmup', 'saved', 'gym', 'ways']
+
+/** The Warm-up tab's own choices, remembered between sessions. */
+export interface WarmupPrefs {
+  tool: 'ramp' | 'percent'
+  /** Ramp percentages of the work weight, before it — 0.4, 0.6, 0.8 is the default. */
+  ramp: number[]
+  /** For % of 1RM. null → use the weight on the bar. */
+  oneRm: number | null
+  /** % table spacing. */
+  step: number
+}
+
 export interface Settings {
+  tab: AppTab
+  warmup: WarmupPrefs
   theme: 'light' | 'dark' | 'system'
   unit: Unit
   brand: Brand
@@ -79,6 +96,8 @@ export function defaultSettings(): Settings {
   const brand: Brand = 'metcon'
   const unit: Unit = 'lb'
   return {
+    tab: 'load',
+    warmup: { tool: 'ramp', ramp: [0.4, 0.6, 0.8], oneRm: null, step: 5 },
     theme: 'system',
     unit,
     brand,
@@ -129,6 +148,8 @@ export function hydrate(raw: unknown): Settings {
     brand,
     unit,
     theme: oneOf(s.theme, THEMES, base.theme),
+    tab: oneOf(s.tab, APP_TABS, base.tab),
+    warmup: hydrateWarmup(s.warmup, base.warmup),
     plateStyle: oneOf(s.plateStyle, PLATE_STYLES, base.plateStyle),
     collarKind: s.collarKind && s.collarKind in COLLARS ? s.collarKind : defaultCollarKind(brand),
     collarWeight: typeof s.collarWeight === 'number' && Number.isFinite(s.collarWeight) && s.collarWeight >= 0 ? s.collarWeight : null,
@@ -159,6 +180,18 @@ export function hydrate(raw: unknown): Settings {
   // Old stores (and hand-edited ones) may hold a unit the brand does not use.
   if (merged.unit !== unitForBrand(merged.brand)) return applyBrand(merged, merged.brand)
   return merged
+}
+
+function hydrateWarmup(raw: unknown, base: WarmupPrefs): WarmupPrefs {
+  if (!raw || typeof raw !== 'object') return base
+  const w = raw as Partial<WarmupPrefs>
+  const ramp = Array.isArray(w.ramp) && w.ramp.every((p) => typeof p === 'number' && p > 0 && p < 1) ? [...w.ramp].sort() : base.ramp
+  return {
+    tool: oneOf(w.tool, ['ramp', 'percent'] as const, base.tool),
+    ramp,
+    oneRm: positive(w.oneRm) && w.oneRm <= MAX_TARGET ? w.oneRm : null,
+    step: oneOf(w.step, [2.5, 5, 10], base.step),
+  }
 }
 
 /** Accepts the old `number[]` shape and tags those entries with the stored unit. */

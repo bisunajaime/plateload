@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   BARS,
   COLLARS,
@@ -14,19 +14,17 @@ import { fmt } from '../lib/format'
 import { collarWeightOf, type Settings } from '../lib/settings'
 import { NumberField } from './NumberField'
 import { ThemeToggle } from './ThemeToggle'
-import { Segmented, Sheet, Toggle } from './ui'
+import { Segmented, Toggle } from './ui'
 import { feedback, hapticsSupported, primeSound, setSoundEnabled } from '../feel'
 
-export function SettingsSheet({
-  open,
-  onClose,
+export function GymSettings({
   settings,
   update,
   onInventory,
   onReset,
+  footer,
 }: {
-  open: boolean
-  onClose: () => void
+  footer?: ReactNode
   settings: Settings
   update: (patch: Partial<Settings>) => void
   /** Replace the plate counts wholesale (a preset, a reset) — undoable, with a message. */
@@ -36,22 +34,83 @@ export function SettingsSheet({
   const bar = barById(settings.barId)
   const collar = COLLARS[settings.collarKind]
 
+  // Your equipment first — it decides whether every answer is right — then
+  // how the app looks and sounds, then the one destructive action, last.
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="Setup"
-      wide
-      footer={
-        <div className="flex items-center justify-between gap-3">
-          <ResetButton onReset={onReset} />
-          <button className="btn btn-primary px-6" onClick={onClose}>
-            Done
-          </button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-8">
+        {/* ------------------------------------------------------- inventory */}
+        <InventoryEditor settings={settings} update={update} onInventory={onInventory} />
+        {/* ------------------------------------------------------------- bar */}
+        <section aria-labelledby="set-bar">
+          <h3 id="set-bar" className="label mb-2">
+            Bar
+          </h3>
+          <select
+            className="btn w-full justify-between"
+            value={settings.barId}
+            onChange={(e) => update({ barId: e.target.value })}
+            aria-label="Bar"
+          >
+            {BARS.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-muted">
+            {bar.note ?? 'Custom weight'} · {fmt(barWeight(bar, settings.unit, settings.customBarWeight))} {settings.unit} ·
+            sleeve {bar.sleeveMm} mm
+          </p>
+          {bar.custom && (
+            <label className="mt-3 flex items-center gap-3 text-sm">
+              <span className="text-muted">Bar weight ({settings.unit})</span>
+              <NumberField
+                className="btn w-32 justify-center"
+                value={settings.customBarWeight}
+                placeholder={fmt(barWeight(bar, settings.unit, null))}
+                onCommit={(v) => update({ customBarWeight: v && v > 0 ? v : null })}
+                aria-label={`Custom bar weight in ${settings.unit}`}
+              />
+            </label>
+          )}
+        </section>
+
+        {/* --------------------------------------------------------- collars */}
+        <section aria-labelledby="set-collars">
+          <h3 id="set-collars" className="label mb-2">
+            Collars
+          </h3>
+          <Toggle
+            checked={settings.collars}
+            onChange={(v) => update({ collars: v })}
+            label="Collars on the bar"
+            hint={`${collar.label} — ${collar.note}`}
+          />
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <select
+              className="btn justify-between"
+              value={settings.collarKind}
+              onChange={(e) => update({ collarKind: e.target.value as CollarKind, collarWeight: null })}
+              aria-label="Collar type"
+            >
+              {Object.values(COLLARS).map((c) => (
+                <option key={c.kind} value={c.kind}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-3 text-sm">
+              <span className="shrink-0 text-muted">Each ({settings.unit})</span>
+              <NumberField
+                className="btn w-full justify-center"
+                value={collarWeightOf(settings)}
+                onCommit={(v) => update({ collarWeight: v })}
+                aria-label={`Collar weight in ${settings.unit}`}
+              />
+            </label>
+          </div>
+        </section>
+
         {/* --------------------------------------------------------- display */}
         <section aria-labelledby="set-display">
           <h3 id="set-display" className="label mb-2">
@@ -127,81 +186,11 @@ export function SettingsSheet({
           )}
         </section>
 
-        {/* ------------------------------------------------------------- bar */}
-        <section aria-labelledby="set-bar">
-          <h3 id="set-bar" className="label mb-2">
-            Bar
-          </h3>
-          <select
-            className="btn w-full justify-between"
-            value={settings.barId}
-            onChange={(e) => update({ barId: e.target.value })}
-            aria-label="Bar"
-          >
-            {BARS.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-          <p className="mt-2 text-xs text-muted">
-            {bar.note ?? 'Custom weight'} · {fmt(barWeight(bar, settings.unit, settings.customBarWeight))} {settings.unit} ·
-            sleeve {bar.sleeveMm} mm
-          </p>
-          {bar.custom && (
-            <label className="mt-3 flex items-center gap-3 text-sm">
-              <span className="text-muted">Bar weight ({settings.unit})</span>
-              <NumberField
-                className="btn w-32 justify-center"
-                value={settings.customBarWeight}
-                placeholder={fmt(barWeight(bar, settings.unit, null))}
-                onCommit={(v) => update({ customBarWeight: v && v > 0 ? v : null })}
-                aria-label={`Custom bar weight in ${settings.unit}`}
-              />
-            </label>
-          )}
-        </section>
-
-        {/* --------------------------------------------------------- collars */}
-        <section aria-labelledby="set-collars">
-          <h3 id="set-collars" className="label mb-2">
-            Collars
-          </h3>
-          <Toggle
-            checked={settings.collars}
-            onChange={(v) => update({ collars: v })}
-            label="Collars on the bar"
-            hint={`${collar.label} — ${collar.note}`}
-          />
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <select
-              className="btn justify-between"
-              value={settings.collarKind}
-              onChange={(e) => update({ collarKind: e.target.value as CollarKind, collarWeight: null })}
-              aria-label="Collar type"
-            >
-              {Object.values(COLLARS).map((c) => (
-                <option key={c.kind} value={c.kind}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-3 text-sm">
-              <span className="shrink-0 text-muted">Each ({settings.unit})</span>
-              <NumberField
-                className="btn w-full justify-center"
-                value={collarWeightOf(settings)}
-                onCommit={(v) => update({ collarWeight: v })}
-                aria-label={`Collar weight in ${settings.unit}`}
-              />
-            </label>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------------- inventory */}
-        <InventoryEditor settings={settings} update={update} onInventory={onInventory} />
+      <div className="border-t border-line pt-6">
+        <ResetButton onReset={onReset} />
       </div>
-    </Sheet>
+      {footer}
+    </div>
   )
 }
 

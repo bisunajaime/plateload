@@ -9,7 +9,8 @@ import { BarbellSVG, SleeveThumb } from './BarbellSVG'
 const MARGIN = 12
 /** Clear of the sticky header. */
 const TOP_LIMIT = 68
-const BOTTOM_LIMIT = 12
+/** Clear of the tab bar (and the home indicator) on a phone. */
+const BOTTOM_LIMIT = 84
 /** Movement under this is a tap, not a drag. */
 const DRAG_SLOP = 5
 /** Picked up, the card rises a little off the page. */

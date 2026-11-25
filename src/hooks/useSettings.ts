@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BARS, type Brand, type Unit } from '../data/plates'
 import type { RankMode } from '../lib/combinations'
 import { setHapticsEnabled, setSoundEnabled } from '../feel'
-import { MAX_TARGET, RANK_MODES, STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
+import { APP_TABS, MAX_TARGET, RANK_MODES, STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
 
 /* ------------------------------------------------------------------- URL sync */
 
@@ -35,6 +35,8 @@ function readUrl(base: Settings): Settings {
   if (sleeveView != null) s.closeUp = sleeveView === '1'
   const change = q.get('change')
   if (change != null) s.includeChange = change === '1'
+  const tab = q.get('tab')
+  if (tab && (APP_TABS as string[]).includes(tab)) s.tab = tab as Settings['tab']
   return s
 }
 
@@ -47,6 +49,7 @@ function writeUrl(s: Settings) {
   q.set('bar', s.barId === 'custom' && s.customBarWeight ? String(s.customBarWeight) : s.barId)
   q.set('collars', s.collars ? '1' : '0')
   if (!s.includeChange) q.set('change', '0')
+  if (s.tab !== 'load') q.set('tab', s.tab)
   const next = `${window.location.pathname}?${q.toString()}`
   window.history.replaceState(null, '', next)
 }
