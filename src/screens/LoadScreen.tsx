@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../app/context'
-import { ComboList } from '../components/ComboList'
 import { LoadCard } from '../components/LoadCard'
 import { MiniBar } from '../components/MiniBar'
 import { SaveFavoriteSheet } from '../components/SaveFavoriteSheet'
-import { YourWeights } from '../components/YourWeights'
+import { OtherWays } from './OtherWays'
+import { SavedStrip } from './SavedStrip'
 import { useHasScrolled, useVisibility } from '../hooks/useOnScreen'
 
 /** The load: the answer, the controls to change it, and the other ways to make it. */
@@ -60,13 +60,7 @@ export function LoadScreen({ pinned = false }: { pinned?: boolean }) {
       />
       {!pinned && (
         <>
-          <YourWeights
-            favorites={settings.favorites.map((f, index) => ({ ...f, index }))}
-            recents={settings.lastWeights}
-            unit={settings.unit}
-            onPick={app.loadSaved}
-            onRemove={app.removeFavorite}
-          />
+          <SavedStrip />
           <div ref={listRef}>
             <OtherWays barOffScreen={!hero.onScreen} />
           </div>
@@ -100,27 +94,5 @@ export function LoadScreen({ pinned = false }: { pinned?: boolean }) {
         }}
       />
     </div>
-  )
-}
-
-/** Every other way to make the same weight. */
-export function OtherWays({ barOffScreen = false }: { barOffScreen?: boolean }) {
-  const app = useApp()
-  const { settings, result } = app
-  if (!result.ok) return null
-  return (
-    <ComboList
-      combos={result.combos}
-      mode={settings.mode}
-      onMode={(mode) => app.update({ mode })}
-      plates={app.loadout.plates}
-      collarKind={app.collarKind}
-      collarWidthMm={app.collarWidth}
-      sleeveMm={app.loadout.sleeveMm}
-      selectedId={app.selected?.id ?? null}
-      onSelect={(c) => app.selectCombo(c, barOffScreen)}
-      truncated={result.truncated}
-      totalFound={result.totalFound}
-    />
   )
 }
