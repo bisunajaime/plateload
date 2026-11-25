@@ -107,6 +107,9 @@ export function SaveFavoriteSheet({
     <Sheet
       open={open}
       onClose={onClose}
+      // A keyboard user starts in the name field. On a phone that would raise the
+      // on-screen keyboard over the lift chips, which are the quicker way to name it.
+      focusField={typeof window === 'undefined' || !window.matchMedia('(pointer: coarse)').matches}
       title={`Save ${fmt(target)} ${unit}`}
       footer={
         <div className="flex justify-end gap-2">

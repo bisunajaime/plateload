@@ -67,7 +67,7 @@ export function SavedScreen() {
                 <BookmarkIcon />
               </span>
               <p className="text-base font-semibold text-ink">Nothing saved yet</p>
-              <p className="max-w-xs text-sm text-muted">Tap ☆ Save on the Load tab to keep a weight for next time — name it after the lift.</p>
+              <p className="max-w-xs text-sm text-muted">Tap Save on the Load tab to keep a weight for next time — name it after the lift.</p>
               {!desktop && (
                 <Button variant="primary" size="sm" onClick={() => app.go('load')}>
                   Go to Load

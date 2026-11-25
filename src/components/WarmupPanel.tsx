@@ -159,7 +159,8 @@ function Ramp() {
               onClick={() => update({ warmup: { ...prefs, ramp: p.ramp } })}
             >
               {p.label}
-              <span className="font-normal opacity-80">· {p.ramp.length + 2} sets</span>
+              {/* Counted from the plan itself: nearby steps can land on the same weight and merge. */}
+              <span className="font-normal opacity-80">· {warmupPlan(work, input, p.ramp).length} sets</span>
             </Chip>
           ))}
         </div>

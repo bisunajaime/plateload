@@ -52,7 +52,7 @@ export function LoadScreen({ pinned = false }: { pinned?: boolean }) {
         jumps={settings.unit === 'kg' ? [2.5, 5, 10] : [5, 10, 25]}
         onStep={app.setTarget}
         onJump={app.jump}
-        onEnter={app.pick}
+        onEnter={app.enterWeight}
         onToggleCloseUp={() => update({ closeUp: !settings.closeUp })}
         moment={app.moment}
         saved={app.isSaved}

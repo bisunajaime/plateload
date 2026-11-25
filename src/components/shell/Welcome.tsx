@@ -1,31 +1,43 @@
+import { useEffect, useRef } from 'react'
 import { useApp } from '../../app/context'
 import { fmt } from '../../lib/format'
 import { Button } from '../kit/Button'
 
 /**
  * First visit only. The answer is useful straight away, but it rests on plates
- * the app assumed — so say that once, and offer the one step that fixes it.
+ * the app assumed — so say that once, briefly, and offer the one step that
+ * fixes it. Using the app is answer enough: changing the weight dismisses it.
  */
 export function Welcome() {
   const app = useApp()
-  const { settings, loadout } = app
+  const { settings, loadout, update } = app
+  const firstTarget = useRef(settings.target)
+  useEffect(() => {
+    if (settings.intro && settings.target !== firstTarget.current) update({ intro: false })
+  }, [settings.intro, settings.target, update])
   if (!settings.intro) return null
+
   const brand = settings.brand === 'metcon' ? 'Metcon' : 'Eleiko'
-  const dismiss = () => app.update({ intro: false })
+  const dismiss = () => {
+    update({ intro: false })
+    // The card is about to go; don't let keyboard focus go with it.
+    const next = document.querySelector<HTMLElement>('[data-weight-button]') ?? document.getElementById('main')
+    window.setTimeout(() => next?.focus({ preventScroll: true }), 0)
+  }
   return (
-    <section aria-labelledby="welcome-title" className="card mb-6 border-accent/60 p-4 fade-up sm:p-5">
-      <h2 id="welcome-title" className="text-lg font-semibold">
-        Ready when you are
+    <section aria-labelledby="welcome-title" className="card mb-4 border-accent/60 px-4 py-3 fade-up">
+      <h2 id="welcome-title" className="text-base font-semibold">
+        Set for a typical {brand} gym
       </h2>
-      <p className="mt-1 text-base text-muted">
-        This assumes a typical {brand} gym: a {fmt(loadout.barWeight)} {settings.unit} bar and a full set of plates. If yours is different, tell it once and every load will match what’s on your floor.
+      <p className="text-sm text-muted">
+        {fmt(loadout.barWeight)} {settings.unit} bar, a full set of plates. Different at yours? Tell it once.
       </p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         <Button
           variant="accent"
           size="sm"
           onClick={() => {
-            dismiss()
+            update({ intro: false })
             app.go('gym')
           }}
         >

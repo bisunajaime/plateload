@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getPlateSet } from '../data/plates'
 import { denomsFromPlates, type SolveInput } from './combinations'
+import { applyBrand, buildSolveInput, defaultSettings } from './settings'
 import { RAMP_PRESETS, nextJump, percentTable, platesFor, warmupPlan } from './warmup'
 
 function metconKg(includeChange = true): SolveInput {
@@ -87,5 +88,12 @@ describe('plates for each row', () => {
       for (const s of warmupPlan(140, input, ramp)) expect(platesFor(input, s.weight)).not.toBeNull()
     }
     for (const r of percentTable(150, input)) expect(platesFor(input, r.weight)).not.toBeNull()
+  })
+})
+
+describe('warm-up sets are round numbers', () => {
+  it('140 kg ramps through 2.5 kg steps, never 0.5 kg plates', () => {
+    const plan = warmupPlan(140, buildSolveInput({ ...applyBrand(defaultSettings(), 'eleiko'), collars: false }))
+    for (const step of plan.filter((s) => s.key !== 'work' && !s.bareBar)) expect(step.weight % 2.5).toBe(0)
   })
 })

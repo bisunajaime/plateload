@@ -9,7 +9,7 @@ import { Celebration, type Moment } from '../Celebration'
 import { EmptyState } from '../EmptyState'
 import { cantLoadReason } from './reason'
 import { Keypad } from '../Keypad'
-import { MinusIcon, PencilIcon, PlusIcon, ShareIcon, StarIcon } from '../kit/icons'
+import { MinusIcon, PencilIcon, PlusIcon, ShareIcon, BookmarkIcon } from '../kit/icons'
 import { PlatePill } from '../kit/PlatePill'
 import { RollingNumber } from '../RollingNumber'
 import { Sheet } from '../ui'
@@ -71,6 +71,14 @@ export const Scoreboard = forwardRef<HTMLElement, ScoreboardProps>(function Scor
   /* --------------------------------------------------------- the number */
 
   const [typing, setTyping] = useState(false)
+  // The shown weight is selected when the field opens, so typing replaces it —
+  // as on the keypad — instead of appending to it ("100225").
+  const field = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!typing) return
+    const raf = requestAnimationFrame(() => field.current?.select())
+    return () => cancelAnimationFrame(raf)
+  }, [typing])
   const [draft, setDraft] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [keypad, setKeypad] = useState(false)
@@ -170,7 +178,9 @@ export const Scoreboard = forwardRef<HTMLElement, ScoreboardProps>(function Scor
           {typing ? (
             <div className="flex w-full items-baseline justify-center gap-2">
               <input
+                ref={field}
                 autoFocus
+                onFocus={(e) => e.currentTarget.select()}
                 inputMode="decimal"
                 className="w-full min-w-0 rounded-xl bg-surface2 text-center font-cond font-bold leading-none tabular-nums outline-none"
                 style={heroSize}
@@ -196,6 +206,7 @@ export const Scoreboard = forwardRef<HTMLElement, ScoreboardProps>(function Scor
               onClick={startTyping}
               className="group flex max-w-full items-baseline gap-2 rounded-2xl px-3 transition hover:bg-surface2/60 active:scale-press-wide"
               aria-label={`${fmt(target)} ${unit}. Type a weight`}
+              data-weight-button
             >
               <RollingNumber
                 value={target}
@@ -357,7 +368,7 @@ export const Scoreboard = forwardRef<HTMLElement, ScoreboardProps>(function Scor
         <button type="button" className="action-btn text-base" onClick={props.onSave} disabled={!loadable}>
           {/* Keyed on the state, so filling the star replays the pop. */}
           <span key={props.saved ? 'on' : 'off'} className={`inline-flex ${props.saved ? 'text-accent-ink' : ''} ${props.saved && props.animate ? 'pop' : ''}`}>
-            <StarIcon filled={props.saved} />
+            <BookmarkIcon filled={props.saved} />
           </span>
           {props.saved ? 'Saved' : 'Save'}
         </button>

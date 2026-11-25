@@ -38,10 +38,13 @@ export function warmupPlan(work: number, input: SolveInput, percents: number[] =
   const steps: WarmupStep[] = [
     { key: 'bar', label: 'Bar', pct: 0, ideal: base, weight: round3(base), bareBar: true },
   ]
+  // Warm-ups are round numbers: nobody puts 0.5 kg plates on for a 56 kg set.
+  // Round to the gym's usual step first, then to what the plates can make.
+  const grain = input.unit === 'kg' ? 2.5 : 5
   for (const p of percents) {
     const ideal = round3(work * p)
     if (ideal <= base) continue
-    const weight = snapToLoadable(input, ideal)
+    const weight = snapToLoadable(input, Math.round(ideal / grain) * grain)
     if (steps.some((s) => s.weight === weight)) continue
     steps.push({ key: `p${p}`, label: `${Math.round(p * 100)}%`, pct: p, ideal, weight, bareBar: false })
   }

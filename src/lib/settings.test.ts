@@ -118,9 +118,15 @@ describe('end to end through the app’s own settings', () => {
     expect(res.combos[0].plates.map((p) => p.weight)).toEqual([25, 10, 2.5])
   })
 
-  it('with ordinary clips, 100 kg on an Eleiko bar is 25 + 15 a side', () => {
+  it('with ordinary clips, 100 kg on an Eleiko bar is two 20s a side — matching plates win a tie', () => {
     const s = applyBrand(defaultSettings(), 'eleiko')
-    expect(solve(buildSolveInput(s, 100), 'recommended').combos[0].plates.map((p) => p.weight)).toEqual([25, 15])
+    const top = solve(buildSolveInput(s, 100), 'recommended').combos[0]
+    expect(top.plates.map((p) => [p.weight, p.count])).toEqual([[20, 2]])
+  })
+
+  it('225 lb is two 45s a side, not a 55 and a 35', () => {
+    const top = solve(buildSolveInput(defaultSettings(), 225), 'recommended').combos[0]
+    expect(top.plates.map((p) => [p.weight, p.count])).toEqual([[45, 2]])
   })
 
   it('a first run is Metcon pounds, and its opening target is loadable', () => {

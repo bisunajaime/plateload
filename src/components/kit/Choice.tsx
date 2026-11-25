@@ -76,7 +76,7 @@ export function Choice<T extends string>({
             tabIndex={on ? 0 : -1}
             title={o.title}
             onClick={() => choose(i)}
-            className={`relative z-10 min-h-[44px] select-none truncate rounded-lg px-3 text-sm font-semibold transition-colors ${
+            className={`relative z-10 min-h-[44px] select-none truncate rounded-lg px-1.5 text-sm font-semibold transition-colors ${
               on ? 'text-bg' : 'text-muted hover:text-ink'
             }`}
           >

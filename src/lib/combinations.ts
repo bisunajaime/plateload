@@ -343,6 +343,9 @@ export function rankCombos(combos: Combo[], mode: RankMode, denoms: Denom[]): Co
         (a, b) =>
           Number(a.overCapacity) - Number(b.overCapacity) ||
           a.plateCount - b.plateCount ||
+          // Same count: fewer kinds of plate. 225 lb is two 45s a side in any
+          // gym, not a 55 and a 35 — matching plates are quicker to find and load.
+          a.plates.length - b.plates.length ||
           lexDesc(V(a), V(b)) ||
           a.changeCount - b.changeCount,
       )

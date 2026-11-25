@@ -323,7 +323,7 @@ export function Sheet({
           </div>
           <header className="flex items-center justify-between gap-3 border-b border-line px-5 pb-4 pt-2 sm:pt-4">
             <h2 className="text-lg font-semibold">{shown.title}</h2>
-            <button className="btn btn-ghost min-h-[40px] px-3" onClick={onClose} aria-label="Close">
+            <button className="btn btn-ghost min-h-[44px] min-w-[44px] px-3" onClick={onClose} aria-label="Close">
               <XIcon />
             </button>
           </header>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../app/context'
 import { BarbellSVG } from '../components/BarbellSVG'
 import { PlatePill } from '../components/kit/PlatePill'
@@ -28,6 +28,22 @@ export function WarmupScreen() {
 function OnTheBar() {
   const { settings, update, selected, result, loadout, collarKind, collarWidth, animate } = useApp()
   const { closeUp } = settings
+  // Spoken only when the load changes after the tab opens — opening the tab isn't news.
+  const sentence = !result.ok
+    ? `${fmt(settings.target)} ${settings.unit} can’t be loaded`
+    : selected && selected.plates.length
+      ? `${fmt(settings.target)} ${settings.unit}: ${selected.plates.map((p) => `${p.count > 1 ? `${p.count} × ` : ''}${fmt(p.weight)}`).join(', ')} each side`
+      : `${fmt(settings.target)} ${settings.unit}: empty bar`
+  const [announcement, setAnnouncement] = useState('')
+  const opened = useRef(true)
+  useEffect(() => {
+    if (opened.current) {
+      opened.current = false
+      return
+    }
+    const t = window.setTimeout(() => setAnnouncement(sentence), 450)
+    return () => window.clearTimeout(t)
+  }, [sentence])
   const byId = useMemo(() => new Map(loadout.plates.map((p) => [p.id, p])), [loadout.plates])
   // Tucked right under the sticky header, whatever its height — gym mode makes it taller.
   const [top, setTop] = useState(0)
@@ -50,9 +66,11 @@ function OnTheBar() {
       <div className={closeUp ? 'flex items-center gap-3' : ''}>
         <div
           className={`flex min-h-[44px] gap-x-3 gap-y-1 ${closeUp ? 'min-w-0 flex-1 flex-col items-start' : 'flex-wrap items-center'}`}
-          role="status"
-          aria-live="polite"
         >
+          {/* One sentence for screen readers when a set is loaded, not the pills read out bare. */}
+          <span className="sr-only" aria-live="polite" aria-atomic="true">
+            {announcement}
+          </span>
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">On the bar</span>
           <span className="flex items-baseline gap-1">
             <span className={`font-cond font-bold tabular-nums ${closeUp ? 'text-2xl' : 'text-xl'}`}>{fmt(settings.target)}</span>

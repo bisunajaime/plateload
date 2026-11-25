@@ -23,7 +23,9 @@ export function Switch({
   return (
     <label className={`flex min-h-[48px] items-center justify-between gap-4 py-2 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
       <span className="flex flex-col">
-        <span className={`text-base font-medium ${disabled ? 'text-muted' : 'text-ink'}`}>{label}</span>
+        <span id={`${id}-label`} className={`text-base font-medium ${disabled ? 'text-muted' : 'text-ink'}`}>
+          {label}
+        </span>
         {hint && (
           <span id={`${id}-hint`} className="text-sm text-muted">
             {hint}
@@ -37,6 +39,8 @@ export function Switch({
           className="peer sr-only"
           checked={checked}
           disabled={disabled}
+          // Named by the label alone; the hint describes it, so it isn't read twice.
+          aria-labelledby={`${id}-label`}
           aria-describedby={hint ? `${id}-hint` : undefined}
           onChange={(e) => {
             feedback('toggle')

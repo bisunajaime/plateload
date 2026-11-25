@@ -20,7 +20,7 @@ const brandName = (b: Brand) => (b === 'metcon' ? 'Metcon' : 'Eleiko')
  * it through `useApp()`; none of them owns a piece of the load.
  */
 export function useAppModel() {
-  const { settings, update, setTarget, rememberWeight, pickWeight, reset } = useSettings()
+  const { settings, update, setTarget, rememberWeight, pickWeight, reset, sharedFrom } = useSettings()
   const { toast, show: showToast, dismiss: dismissToast } = useToast()
   const animate = !useReducedMotion()
 
@@ -107,6 +107,20 @@ export function useAppModel() {
     [setTarget, rememberWeight, settings],
   )
 
+  /**
+   * A weight typed in. Typing is where a fat finger lands you on 995, so it
+   * always offers the way back to where you were.
+   */
+  const enterWeight = (w: number) => {
+    const before = settings.target
+    pick(w)
+    if (w === before) return
+    showToast({
+      message: `${fmt(w)} ${settings.unit} on the bar.`,
+      action: { label: `Back to ${fmt(before)}`, run: () => setTarget(before) },
+    })
+  }
+
   /** A quick jump: at least this far either way, landing on something loadable. */
   const jump = (delta: number) => {
     const want = settings.target + delta
@@ -125,6 +139,18 @@ export function useAppModel() {
     const brand = brandForUnit(unit)
     applyUndoable(`Switched to ${brandName(brand)} for ${fmt(weight)} ${unit}.`, brandPatch(brand, weight))
   }
+
+  // Opened someone's shared link: their plates and bar are on screen now, but
+  // never silently — say so, and offer your own gym back.
+  const announcedShare = useRef(false)
+  useEffect(() => {
+    if (!sharedFrom || announcedShare.current) return
+    announcedShare.current = true
+    showToast({
+      message: `Showing a shared load on ${brandName(settings.brand)} plates.`,
+      action: { label: 'Use mine', run: () => update(sharedFrom) },
+    })
+  }, [sharedFrom, settings.brand, showToast, update])
 
   /* ------------------------------------------------------------- saving */
 
@@ -223,6 +249,10 @@ export function useAppModel() {
     if (tab === settings.tab) return
     update({ tab })
     window.scrollTo({ top: 0 })
+    // If whatever had focus went away with the old screen, land on the new one.
+    window.setTimeout(() => {
+      if (document.activeElement === document.body) document.getElementById('main')?.focus({ preventScroll: true })
+    }, 0)
   }
 
   const resetAll = () => {
@@ -248,6 +278,7 @@ export function useAppModel() {
     peek,
     setTarget,
     pick,
+    enterWeight,
     jump,
     loadSaved,
     switchBrand,

@@ -60,7 +60,8 @@ export function Header({
           draggable={false}
         >
           <span className="brand-mark" aria-hidden="true" />
-          <span>PlateLoad</span>
+          {/* The link is named by its label; on the narrowest phones the word makes room for the plates. */}
+          <span className="hidden min-[360px]:inline">PlateLoad</span>
         </a>
 
         <button

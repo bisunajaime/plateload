@@ -68,7 +68,7 @@ export default function App() {
       <div className="min-h-dvh pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0">
         <Header brand={app.settings.brand} onBrand={() => setBrandOpen(true)} onLogoHold={app.loadWorldRecord} />
 
-        <main id="main" className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
+        <main id="main" tabIndex={-1} className="outline-none mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
           <h1 className="sr-only">PlateLoad</h1>
           {(desktop || phoneTab === 'load') && <Welcome />}
           {desktop ? (

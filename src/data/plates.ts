@@ -59,7 +59,10 @@ export function inkOn(hex: string): string {
     return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
   })
   const L = 0.2126 * r + 0.7152 * g + 0.0722 * b
-  return L > 0.45 ? '#141416' : '#FFFFFF'
+  // Whichever reads better: a fixed threshold put white on Metcon's grey 10 lb (2.6:1).
+  const onWhite = 1.05 / (L + 0.05)
+  const onDark = (L + 0.05) / (0.0074 + 0.05)
+  return onDark >= onWhite ? '#141416' : '#FFFFFF'
 }
 
 /* ----------------------------------------------------------- Metcon (spec) */
@@ -513,7 +516,7 @@ export const COLLARS: Record<CollarKind, CollarDef> = {
     kg: 0,
     lb: 0,
     widthMm: 22,
-    note: 'Rubber spring clip — adds no weight',
+    note: 'Quick-release clip — light enough to count as 0',
   },
   generic: {
     kind: 'generic',

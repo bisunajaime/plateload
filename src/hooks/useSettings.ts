@@ -56,8 +56,23 @@ function writeUrl(s: Settings) {
 
 /* --------------------------------------------------------------------- hook */
 
+/** What a shared link may change about your setup — and what Undo puts back. */
+export const SHARED_KEYS = [
+  'brand',
+  'unit',
+  'barId',
+  'customBarWeight',
+  'collarKind',
+  'collarWeight',
+  'collars',
+  'includeChange',
+  'target',
+  'inventory',
+] as const
+
 export function useSettings() {
-  const [settings, setSettings] = useState<Settings>(() => {
+  // Read once: your stored settings, then whatever a link asks for on top.
+  const [boot] = useState(() => {
     let base = defaultSettings()
     let stored = false
     try {
@@ -75,8 +90,14 @@ export function useSettings() {
         window.innerWidth < 640 && window.matchMedia('(prefers-color-scheme: dark)').matches
       base = { ...base, gymMode: smallAndDark }
     }
-    return readUrl(base)
+    const opened = readUrl(base)
+    // Someone else's link changed your gym (not just the weight): remember yours,
+    // so the app can say so and offer to put it back.
+    const setupChanged = stored && SHARED_KEYS.some((k) => k !== 'target' && k !== 'inventory' && JSON.stringify(opened[k]) !== JSON.stringify(base[k]))
+    const yours = setupChanged ? (Object.fromEntries(SHARED_KEYS.map((k) => [k, base[k]])) as Partial<Settings>) : null
+    return { opened, yours }
   })
+  const [settings, setSettings] = useState<Settings>(boot.opened)
 
   // Persist, debounced enough to survive a stepper being hammered.
   const timer = useRef<number | undefined>(undefined)
@@ -156,7 +177,7 @@ export function useSettings() {
     [settings.theme],
   )
 
-  return { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset, isDark }
+  return { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset, isDark, sharedFrom: boot.yours }
 }
 
 function remember(s: Settings, weight: number, unit: Unit): Settings {

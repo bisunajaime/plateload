@@ -38,7 +38,7 @@ export function Toaster({ toast, onDismiss }: { toast: (ToastData & { id: number
   const held = toast != null && heldId === toast.id
   useEffect(() => {
     if (!toast || held) return
-    const t = window.setTimeout(onDismiss, toast.action ? 8000 : 3200)
+    const t = window.setTimeout(onDismiss, toast.action ? 6000 : 3200)
     return () => window.clearTimeout(t)
   }, [toast, held, onDismiss])
 
@@ -74,6 +74,7 @@ export function Toaster({ toast, onDismiss }: { toast: (ToastData & { id: number
     return () => document.removeEventListener('keydown', onKey)
   }, [hasAction])
 
+  const keyboard = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
   const mac = typeof navigator !== 'undefined' && /Mac|iP(hone|ad)/.test(navigator.platform)
 
   return (
@@ -87,12 +88,12 @@ export function Toaster({ toast, onDismiss }: { toast: (ToastData & { id: number
       {shown && (
         <div
           key={shown.id}
-          className={`pointer-events-auto flex min-h-[48px] max-w-md items-center gap-3 rounded-2xl bg-ink py-1.5 pl-4 pr-1.5 text-sm text-bg shadow-2xl ${
+          // Taps go through the toast to whatever is under it — mid-set, a stepper
+          // must never be blocked by a message. Only its button takes taps.
+          className={`pointer-events-none flex min-h-[48px] max-w-md items-center gap-3 rounded-2xl bg-ink py-1.5 pl-4 pr-1.5 text-sm text-bg shadow-2xl ${
             leaving ? 'toast-out' : 'toast-in'
           }`}
           data-toast
-          onPointerEnter={() => setHeldId(shown.id)}
-          onPointerLeave={() => setHeldId(null)}
           onFocus={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node)) cameFrom.current = e.relatedTarget
             setHeldId(shown.id)
@@ -106,12 +107,14 @@ export function Toaster({ toast, onDismiss }: { toast: (ToastData & { id: number
           {shown.action ? (
             <button
               type="button"
-              className="min-h-[44px] shrink-0 rounded-xl px-3 font-semibold text-bg transition hover:bg-bg/10 active:scale-press focus-visible:[--tw-ring-color:rgb(var(--bg))] focus-visible:[--tw-ring-offset-color:rgb(var(--ink))]"
+              className="pointer-events-auto min-h-[44px] shrink-0 rounded-xl px-3 font-semibold text-bg transition hover:bg-bg/10 active:scale-press focus-visible:[--tw-ring-color:rgb(var(--bg))] focus-visible:[--tw-ring-offset-color:rgb(var(--ink))]"
               onClick={act}
+              onPointerEnter={() => setHeldId(shown.id)}
+              onPointerLeave={() => setHeldId(null)}
               disabled={leaving}
             >
               {shown.action.label}
-              <span className="sr-only"> ({mac ? 'Command' : 'Control'} Z)</span>
+              {keyboard && <span className="sr-only"> ({mac ? 'Command' : 'Control'} Z)</span>}
             </button>
           ) : (
             <span className="w-2.5" />
