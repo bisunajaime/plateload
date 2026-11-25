@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../app/context'
+import { BarbellSVG } from '../components/BarbellSVG'
 import { PlatePill } from '../components/kit/PlatePill'
 import { WarmupPanel } from '../components/WarmupPanel'
 import { DESKTOP, useMedia } from '../hooks/useMedia'
@@ -24,7 +25,7 @@ export function WarmupScreen() {
  * sets — so you can load a row and check it without leaving the tab.
  */
 function OnTheBar() {
-  const { settings, selected, result, loadout } = useApp()
+  const { settings, selected, result, loadout, collarKind, collarWidth, animate } = useApp()
   const byId = useMemo(() => new Map(loadout.plates.map((p) => [p.id, p])), [loadout.plates])
   // Tucked right under the sticky header, whatever its height — gym mode makes it taller.
   const [top, setTop] = useState(0)
@@ -39,7 +40,7 @@ function OnTheBar() {
     <div
       data-on-the-bar
       style={{ top }}
-      className="sticky z-20 -mx-4 -mt-4 border-b border-line bg-bg/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6"
+      className="sticky z-20 -mx-4 -mt-4 border-b border-line bg-bg px-4 py-2.5 sm:-mx-6 sm:-mt-6 sm:px-6"
     >
       <div className="flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1" role="status" aria-live="polite">
         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">On the bar</span>
@@ -60,6 +61,23 @@ function OnTheBar() {
           )}
         </span>
       </div>
+      {/* The whole bar, small: tap a set below and watch it load. It answers with
+          the same thunks as the Load tab, which isn't on screen to make them. */}
+      <BarbellSVG
+        bar={loadout.bar}
+        plates={loadout.plates}
+        combo={selected}
+        collarKind={collarKind}
+        collarWidthMm={collarWidth}
+        unit={settings.unit}
+        showLabels={settings.showLabels}
+        animate={animate}
+        feedback
+        unloadable={!result.ok}
+        loadId={settings.target}
+        maxHeightPx={96}
+        className="mx-auto mt-1 block h-auto"
+      />
     </div>
   )
 }
