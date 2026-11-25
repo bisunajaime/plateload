@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Unit } from '../data/plates'
+import { feedback } from '../feel'
 
 /** Big keys for a phone in a chalky hand. */
 export function Keypad({ initial, unit, onDone }: { initial: string; unit: Unit; onDone: (v: string) => void }) {
@@ -8,7 +9,7 @@ export function Keypad({ initial, unit, onDone }: { initial: string; unit: Unit;
   // as a calculator does. Appending turned 100 → "125" into 100125.
   const [fresh, setFresh] = useState(true)
   const press = (k: string) => {
-    if ('vibrate' in navigator) navigator.vibrate?.(6)
+    feedback('step')
     const wasFresh = fresh
     setFresh(false)
     setBuf((prev) => {

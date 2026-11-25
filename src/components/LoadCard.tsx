@@ -6,6 +6,7 @@ import { BarbellSVG } from './BarbellSVG'
 import { EmptyState } from './EmptyState'
 import { CopyIcon, MinusIcon, PlusIcon, Sheet, StarIcon, ZoomIcon } from './ui'
 import { Keypad } from './Keypad'
+import { feedback } from '../feel'
 
 /**
  * The answer, in one place: the loaded bar, the weight, and the plates that
@@ -58,9 +59,7 @@ export const LoadCard = forwardRef<
   const [down, setDown] = useState(false)
   const byId = useMemo(() => new Map(plates.map((p) => [p.id, p])), [plates])
 
-  const buzz = () => {
-    if ('vibrate' in navigator) navigator.vibrate?.(8)
-  }
+  const buzz = () => feedback('step')
   const step = (w: number | null) => {
     if (w == null) return
     props.onStep(w)

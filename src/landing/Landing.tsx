@@ -5,7 +5,7 @@ import { COLLARS, IWF } from '../data/plates'
 import { snapToLoadable, solve } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, buildSolveInput, defaultSettings, resolveLoadout } from '../lib/settings'
-import { prefersReducedMotion } from '../hooks/useSettings'
+import { useReducedMotion } from '../feel/motion'
 import { RollingNumber } from './RollingNumber'
 import { LoadingBay, RollingPlate, ScrollMarquee } from './scroll'
 import { useScrollVar } from './useScroll'
@@ -74,7 +74,7 @@ const appLink = (brand: Brand, target: number) =>
 function Demo() {
   const [brand, setBrand] = useState<Brand>('metcon')
   const [target, setTarget] = useState(225)
-  const animate = !prefersReducedMotion()
+  const animate = !useReducedMotion()
 
   const settings = useMemo(() => ({ ...applyBrand(defaultSettings(), brand), target, closeUp: false }), [brand, target])
   const loadout = useMemo(() => resolveLoadout(settings), [settings])

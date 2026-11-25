@@ -14,7 +14,8 @@ import { fmt } from './lib/format'
 import { buildSolveInput, resolveLoadout } from './lib/settings'
 import { nextJump } from './lib/warmup'
 import { useHasScrolled, useVisibility } from './hooks/useOnScreen'
-import { prefersReducedMotion, useSettings } from './hooks/useSettings'
+import { useSettings } from './hooks/useSettings'
+import { feedback, useReducedMotion } from './feel'
 
 export default function App() {
   const { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset } = useSettings()
@@ -100,7 +101,7 @@ export default function App() {
   // so removal lives in the favourites list where you can see which is which.
   const addFavorite = () => setFavOpen(true)
 
-  const animate = !prefersReducedMotion()
+  const animate = !useReducedMotion()
 
   // A thumbnail of the load stands in for the card once you have scrolled
   // away from it — but not over the combination list, whose rows already
@@ -177,7 +178,7 @@ export default function App() {
                 selectedId={selected?.id ?? null}
                 onSelect={(c) => {
                   setPicked({ load: loadKey, id: c.id })
-                  if ('vibrate' in navigator) navigator.vibrate?.(10)
+                  feedback('select')
                 }}
                 truncated={result.truncated}
                 totalFound={result.totalFound}

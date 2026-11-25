@@ -3,6 +3,27 @@
 @tailwind utilities;
 
 @layer base {
+  /* Motion — mirrored in src/feel/motion.ts (a test keeps them in step). */
+  :root {
+    --dur-press: 90ms;
+    --dur-quick: 160ms;
+    --dur-base: 240ms;
+    --dur-settle: 420ms;
+    --dur-roll: 460ms;
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+    --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
+    /* A heavy spring where the browser can draw one; the house curve where it can't. */
+    --ease-seat: var(--ease-out);
+    --stagger-plate: 45ms;
+    --stagger-digit: 45ms;
+  }
+  @supports (transition-timing-function: linear(0, 1)) {
+    :root {
+      --ease-seat: linear(0, 0.039, 0.134, 0.258, 0.393, 0.524, 0.644, 0.748, 0.833, 0.901, 0.952, 0.989, 1.013, 1.028, 1.036, 1.038, 1.037, 1.034, 1.029, 1.024, 1.019, 1.014, 1.01, 1.007, 1);
+    }
+  }
+
   :root {
     /* Light — warm paper / charcoal */
     --bg: 244 242 238;
@@ -48,7 +69,14 @@
     color-scheme: dark;
   }
 
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+
+  /* Taps answer with their own pressed state, not the browser's grey flash; and
+     hammering + must never double-tap-zoom the page. */
+  :where(button, a, label, select, summary, [role='button']) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   body {
     @apply bg-bg text-ink font-sans antialiased;
@@ -77,7 +105,7 @@
   .btn {
     @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line
            bg-surface px-4 text-sm font-medium text-ink transition
-           hover:bg-surface2 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100;
+           hover:bg-surface2 active:scale-press-wide disabled:opacity-40 disabled:active:scale-100;
   }
   .btn-primary {
     @apply border-transparent bg-ink text-bg hover:opacity-90;
@@ -99,7 +127,7 @@
   }
   .chip {
     @apply inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line
-           bg-surface px-3.5 text-sm font-medium text-ink transition hover:bg-surface2 active:scale-95;
+           bg-surface px-3.5 text-sm font-medium text-ink transition hover:bg-surface2 active:scale-press;
   }
   /* A chosen chip — ramp presets, lift names, rep maxes — reads as chosen. */
   .chip[aria-pressed='true'] { @apply border-transparent bg-ink text-bg hover:bg-ink; }
@@ -111,20 +139,20 @@
   /* The weight's −/+ — big, round, and the first thing a thumb finds. */
   .step-btn {
     @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-line bg-surface
-           text-ink transition hover:bg-surface2 active:scale-95 disabled:opacity-30 disabled:active:scale-100;
+           text-ink transition hover:bg-surface2 active:scale-press disabled:opacity-30 disabled:active:scale-100;
   }
   .jump-btn {
     @apply inline-flex min-h-[44px] items-center justify-center rounded-xl bg-surface2/70 text-sm font-semibold
-           tabular-nums text-ink transition hover:bg-surface2 active:scale-[0.97];
+           tabular-nums text-ink transition hover:bg-surface2 active:scale-press;
   }
   .action-btn {
     @apply flex min-h-[48px] items-center justify-center gap-2 text-sm font-medium text-muted transition
-           hover:bg-surface2/50 hover:text-ink disabled:pointer-events-none disabled:opacity-40;
+           hover:bg-surface2/50 hover:text-ink active:bg-surface2 disabled:pointer-events-none disabled:opacity-40;
   }
   /* On the drawing: small, translucent, out of the way of the plates. */
   .view-btn {
     @apply inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-bg/70 px-2.5 text-xs font-medium
-           text-muted backdrop-blur transition hover:text-ink;
+           text-muted backdrop-blur transition hover:text-ink active:scale-press;
   }
   .view-btn[aria-pressed='true'] { @apply text-ink; }
   /* A plate, as a pill in its own colour. */
@@ -165,17 +193,75 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+  .roll-out { display: none; }
 }
 
-/* Plates sliding onto the sleeve */
+/* ------------------------------------------------------------------ plates */
+
+/* On: in from beyond the sleeve end, seating with a little weight. */
 @keyframes plate-on {
-  from { transform: translateX(var(--slide, 120px)); opacity: 0; }
+  from { transform: translateX(var(--slide, 150px)); opacity: 0; }
+  35% { opacity: 1; }
   to { transform: translateX(0); opacity: 1; }
 }
-.plate-anim { animation: plate-on 340ms cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+.plate-anim { animation: plate-on var(--dur-settle) var(--ease-seat) both; }
+
+/* Off: back out the way it came, quicker than it went on. */
+@keyframes plate-off {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(var(--slide, 150px)); opacity: 0; }
+}
+.plate-out { animation: plate-off var(--dur-base) var(--ease-in) both; pointer-events: none; }
+
+/* Plates already on the bar slide along it when the stack under them changes. */
+.plate-glide { transition: transform var(--dur-base) var(--ease-out); }
 
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.fade-up { animation: fade-up 220ms ease-out both; }
+.fade-up { animation: fade-up var(--dur-base) var(--ease-out) both; }
+
+/* ---------------------------------------------------------- rolling number */
+
+/* Room above and below the glyphs, faded out, so a digit blurs away into the
+   edge instead of being cut off by it. */
+.roll {
+  display: inline-block;
+  padding-block: 0.28em;
+  margin-block: -0.28em;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
+}
+.roll-digits { display: inline-flex; }
+.roll-slot { position: relative; display: inline-block; }
+.roll-in,
+.roll-out {
+  display: inline-block;
+  animation-duration: var(--dur-roll);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+  will-change: transform, filter, opacity;
+}
+.roll-out { position: absolute; inset: 0; }
+.roll-in.up { animation-name: roll-in-up; }
+.roll-out.up { animation-name: roll-out-up; }
+.roll-in.down { animation-name: roll-in-down; }
+.roll-out.down { animation-name: roll-out-down; }
+
+@keyframes roll-in-up {
+  from { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+  to { transform: none; filter: blur(0); opacity: 1; }
+}
+@keyframes roll-out-up {
+  from { transform: none; filter: blur(0); opacity: 1; }
+  to { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+}
+@keyframes roll-in-down {
+  from { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+  to { transform: none; filter: blur(0); opacity: 1; }
+}
+@keyframes roll-out-down {
+  from { transform: none; filter: blur(0); opacity: 1; }
+  to { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+}

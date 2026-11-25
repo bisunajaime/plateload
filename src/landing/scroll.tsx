@@ -4,7 +4,7 @@ import { COLLARS, IWF, type PlateDef } from '../data/plates'
 import type { Combo } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, defaultSettings, resolveLoadout } from '../lib/settings'
-import { prefersReducedMotion } from '../hooks/useSettings'
+import { prefersReducedMotion, useReducedMotion } from '../feel/motion'
 import { RollingNumber } from './RollingNumber'
 import { clamp, passProgress, pinnedProgress, useScrollFrame } from './useScroll'
 
@@ -48,7 +48,7 @@ export function LoadingBay() {
   const trackRef = useRef<HTMLElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
   const [stage, setStage] = useState(0)
-  const [animate] = useState(() => !prefersReducedMotion())
+  const animate = !useReducedMotion()
 
   useScrollFrame(() => {
     const el = trackRef.current

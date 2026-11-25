@@ -154,3 +154,23 @@ describe('switching brand', () => {
     expect(s.collars).toBe(false)
   })
 })
+
+describe('feedback settings', () => {
+  it('sound starts off and haptics on', () => {
+    const s = defaultSettings()
+    expect(s.sound).toBe(false)
+    expect(s.haptics).toBe(true)
+  })
+
+  it('a store from before these settings existed gets the defaults', () => {
+    const s = hydrate({ target: 140, brand: 'eleiko', unit: 'kg' })
+    expect(s.sound).toBe(false)
+    expect(s.haptics).toBe(true)
+    expect(s.target).toBe(140)
+  })
+
+  it('keeps stored choices and drops malformed ones', () => {
+    expect(hydrate({ sound: true, haptics: false })).toMatchObject({ sound: true, haptics: false })
+    expect(hydrate({ sound: 'yes', haptics: 0 })).toMatchObject({ sound: false, haptics: true })
+  })
+})

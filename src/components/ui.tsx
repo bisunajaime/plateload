@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { feedback } from '../feel'
 
 /* -------------------------------------------------------------- segmented */
 
@@ -29,7 +30,10 @@ export function Segmented<T extends string>({
           type="button"
           aria-pressed={value === o.value}
           title={o.title}
-          onClick={() => onChange(o.value)}
+          onClick={() => {
+            if (o.value !== value) feedback('select')
+            onChange(o.value)
+          }}
         >
           {o.label}
         </button>
@@ -62,7 +66,10 @@ export function Toggle({
           type="checkbox"
           className="peer sr-only"
           checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
+          onChange={(e) => {
+            feedback('toggle')
+            onChange(e.target.checked)
+          }}
         />
         <span className="h-7 w-12 rounded-full bg-surface2 ring-1 ring-line transition peer-checked:bg-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ink" />
         <span className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-ink transition peer-checked:translate-x-5 peer-checked:bg-bg" />

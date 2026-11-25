@@ -15,6 +15,7 @@ import { collarWeightOf, type Settings } from '../lib/settings'
 import { NumberField } from './NumberField'
 import { ThemeToggle } from './ThemeToggle'
 import { Segmented, Sheet, Toggle } from './ui'
+import { feedback, hapticsSupported, primeSound, setSoundEnabled } from '../feel'
 
 export function SettingsSheet({
   open,
@@ -87,6 +88,37 @@ export function SettingsSheet({
                   { value: 'bumper', label: 'Bumper' },
                   { value: 'calibrated-steel', label: 'Steel' },
                 ]}
+              />
+            </div>
+          )}
+        </section>
+
+        {/* -------------------------------------------------------- feedback */}
+        <section aria-labelledby="set-feedback">
+          <h3 id="set-feedback" className="label mb-2">
+            Feedback
+          </h3>
+          <Toggle
+            checked={settings.sound}
+            onChange={(sound) => {
+              // Turning sound on answers with a sound, so you know what you asked for.
+              setSoundEnabled(sound)
+              if (sound) {
+                primeSound()
+                feedback('confirm')
+              }
+              update({ sound })
+            }}
+            label="Sounds"
+            hint="Quiet clicks, and a thunk as each plate goes on. Follows your phone’s silent switch."
+          />
+          {hapticsSupported() && (
+            <div className="border-t border-line pt-1">
+              <Toggle
+                checked={settings.haptics}
+                onChange={(haptics) => update({ haptics })}
+                label="Vibration"
+                hint="A light tap under your thumb on steps, plates and saves"
               />
             </div>
           )}

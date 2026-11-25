@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BARS, type Brand, type Unit } from '../data/plates'
 import type { RankMode } from '../lib/combinations'
+import { setHapticsEnabled, setSoundEnabled } from '../feel'
 import { MAX_TARGET, RANK_MODES, STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
 
 /* ------------------------------------------------------------------- URL sync */
@@ -108,6 +109,10 @@ export function useSettings() {
     document.documentElement.classList.toggle('gym-mode', settings.gymMode)
   }, [settings.gymMode])
 
+  // The feel modules are global (a sound can fire from anywhere); keep them in step.
+  useEffect(() => setSoundEnabled(settings.sound), [settings.sound])
+  useEffect(() => setHapticsEnabled(settings.haptics), [settings.haptics])
+
   const update = useCallback((patch: Partial<Settings> | ((s: Settings) => Partial<Settings>)) => {
     setSettings((prev) => ({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) }))
   }, [])
@@ -155,6 +160,3 @@ function remember(s: Settings, weight: number, unit: Unit): Settings {
   const list = [{ weight, unit }, ...s.lastWeights.filter((x) => !(x.weight === weight && x.unit === unit))]
   return { ...s, lastWeights: list.slice(0, 15) }
 }
-
-export const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches

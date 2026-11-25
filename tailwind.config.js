@@ -25,6 +25,22 @@ export default {
       },
       borderRadius: { xl2: '1.25rem' },
       spacing: { 18: '4.5rem' },
+      // Motion tokens live in index.css (and src/feel/motion.ts); these just name them.
+      transitionDuration: {
+        DEFAULT: 'var(--dur-quick)',
+        press: 'var(--dur-press)',
+        quick: 'var(--dur-quick)',
+        base: 'var(--dur-base)',
+        settle: 'var(--dur-settle)',
+      },
+      transitionTimingFunction: {
+        DEFAULT: 'var(--ease-out)',
+        out: 'var(--ease-out)',
+        in: 'var(--ease-in)',
+        seat: 'var(--ease-seat)',
+      },
+      // One press depth for small controls, a shallower one for wide ones.
+      scale: { press: '0.96', 'press-wide': '0.985' },
     },
   },
   plugins: [],

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { prefersReducedMotion } from '../hooks/useSettings'
+import { prefersReducedMotion } from '../feel/motion'
 
 export const clamp = (n: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, n))
 

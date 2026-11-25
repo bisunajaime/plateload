@@ -50,6 +50,10 @@ export interface Settings {
   /** Whole-gym counts keyed by plate id, across every brand/unit. */
   inventory: Record<string, number>
   gymMode: boolean
+  /** UI sounds. Off until the person asks for them. */
+  sound: boolean
+  /** Vibration on taps and plates, where the device has it. */
+  haptics: boolean
   preview: PreviewPos
   showLabels: boolean
   closeUp: boolean
@@ -92,6 +96,8 @@ export function defaultSettings(): Settings {
       ...defaultInventory('metcon', 'lb'),
     },
     gymMode: false,
+    sound: false,
+    haptics: true,
     preview: { side: 'right', y: 0.08 },
     showLabels: false,
     closeUp: true,
@@ -131,6 +137,8 @@ export function hydrate(raw: unknown): Settings {
     collars: typeof s.collars === 'boolean' ? s.collars : base.collars,
     includeChange: typeof s.includeChange === 'boolean' ? s.includeChange : base.includeChange,
     gymMode: typeof s.gymMode === 'boolean' ? s.gymMode : base.gymMode,
+    sound: typeof s.sound === 'boolean' ? s.sound : base.sound,
+    haptics: typeof s.haptics === 'boolean' ? s.haptics : base.haptics,
     showLabels: typeof s.showLabels === 'boolean' ? s.showLabels : base.showLabels,
     closeUp: typeof s.closeUp === 'boolean' ? s.closeUp : base.closeUp,
     inventory,
