@@ -37,6 +37,9 @@ export interface BarbellSVGProps {
   className?: string
   /** Extra horizontal magnification; the container scrolls. */
   zoom?: number
+  /** With closeUp: frame only the sleeve and its plates — no floor, no air
+   *  above — so a small drawing still shows the plates big. */
+  tight?: boolean
   /** The target can't be built: the drawing says so, not just the text under it. */
   unloadable?: boolean
   /** Changes whenever the target does — so a second unloadable weight still answers. */
@@ -66,6 +69,7 @@ export function BarbellSVG({
   animate = true,
   className,
   zoom = 1,
+  tight = false,
   unloadable = false,
   loadId,
   feedback: respond = false,
@@ -146,10 +150,12 @@ export function BarbellSVG({
   const collarX = shaftEnd + used
   const collarFits = collarKind ? collarX + collarWidthMm <= L - 6 : true
 
-  const top = -300
-  const height = 640
-  const vbWidth = closeUp ? L - shaftEnd + 230 : L + 40
-  const viewBox = `${closeUp ? shaftEnd - 190 : -20} ${top} ${vbWidth} ${height}`
+  // A fixed frame per view, so the drawing never re-zooms as plates come and go.
+  const crop = closeUp && tight
+  const top = crop ? -245 : -300
+  const height = crop ? 490 : 640
+  const vbWidth = crop ? L - shaftEnd + 40 : closeUp ? L - shaftEnd + 230 : L + 40
+  const viewBox = `${crop ? shaftEnd - 30 : closeUp ? shaftEnd - 190 : -20} ${top} ${vbWidth} ${height}`
   // Cap the width, not the height: a shorter box than the drawing's own aspect
   // would letterbox it, and the platform floor clips to the viewport rather
   // than to the drawing, so the dead space lands all on one side.
