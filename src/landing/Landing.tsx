@@ -5,8 +5,8 @@ import { COLLARS, IWF } from '../data/plates'
 import { snapToLoadable, solve } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, buildSolveInput, defaultSettings, resolveLoadout } from '../lib/settings'
-import { prefersReducedMotion } from '../hooks/useSettings'
-import { RollingNumber } from './RollingNumber'
+import { useReducedMotion } from '../feel/motion'
+import { RollingNumber } from '../components/RollingNumber'
 import { LoadingBay, RollingPlate, ScrollMarquee } from './scroll'
 import { useScrollVar } from './useScroll'
 
@@ -74,7 +74,7 @@ const appLink = (brand: Brand, target: number) =>
 function Demo() {
   const [brand, setBrand] = useState<Brand>('metcon')
   const [target, setTarget] = useState(225)
-  const animate = !prefersReducedMotion()
+  const animate = !useReducedMotion()
 
   const settings = useMemo(() => ({ ...applyBrand(defaultSettings(), brand), target, closeUp: false }), [brand, target])
   const loadout = useMemo(() => resolveLoadout(settings), [settings])
@@ -122,7 +122,7 @@ function Demo() {
               value={target}
               className="font-cond text-[76px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[96px]"
             />
-            <span className="font-cond text-2xl font-semibold uppercase text-white/50">{unit}</span>
+            <span className="font-cond text-[1.5rem] leading-[2rem] font-semibold uppercase text-white/50">{unit}</span>
           </div>
 
           <div className="min-w-0">
@@ -238,7 +238,7 @@ function Attempt({ n, title, children, delay }: { n: string; title: string; chil
         <span className="font-cond text-sm font-semibold uppercase tracking-[0.22em] text-white/50">{n} attempt</span>
         <JudgeLights on={inView} />
       </div>
-      <h3 className="mt-6 font-display text-2xl font-bold leading-tight text-white sm:text-[28px]">{title}</h3>
+      <h3 className="mt-6 font-display text-[1.5rem] font-bold leading-tight text-white sm:text-[28px]">{title}</h3>
       <p className="mt-3 text-[15px] leading-relaxed text-white/65">{children}</p>
     </li>
   )
@@ -292,7 +292,7 @@ export function Landing() {
       {/* ---------------------------------------------------------- nav */}
       <header className="nav">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <a href="#top" className="flex items-center gap-2.5 font-display text-lg font-bold tracking-tight text-white">
+          <a href="#top" className="flex items-center gap-2.5 font-display text-[1.125rem] leading-[1.75rem] font-bold tracking-tight text-white">
             <span className="stripe-mark" aria-hidden="true" />
             PlateLoad
           </a>
@@ -321,7 +321,7 @@ export function Landing() {
                 <br />
                 plate <span className="chalk-underline">math.</span>
               </h1>
-              <p className="mt-6 max-w-md text-lg leading-relaxed text-white/70">
+              <p className="mt-6 max-w-md text-[1.125rem] leading-relaxed text-white/70">
                 Call a weight. PlateLoad finds every way to load it with the plates your gym actually owns, and
                 draws the bar so you can load it at a glance — between sets, rest timer running.
               </p>
@@ -380,7 +380,7 @@ export function Landing() {
                   Knows your gym, not a textbook.
                 </h2>
               </div>
-              <p className="max-w-lg text-lg leading-relaxed text-white/65 lg:justify-self-end">
+              <p className="max-w-lg text-[1.125rem] leading-relaxed text-white/65 lg:justify-self-end">
                 Most calculators assume a perfect rack of plates. PlateLoad starts from what’s actually on your
                 gym’s wall — and the bar, collars and sleeve length you’re really lifting with.
               </p>
@@ -391,7 +391,7 @@ export function Landing() {
                 <li key={f.title} className="feature">
                   <Reveal delay={(i % 3) * 90}>
                     <span className="feature-plate" style={{ ['--plate' as string]: f.color }} aria-hidden="true" />
-                    <h3 className="mt-5 font-display text-lg font-bold text-white">{f.title}</h3>
+                    <h3 className="mt-5 font-display text-[1.125rem] leading-[1.75rem] font-bold text-white">{f.title}</h3>
                     <p className="mt-2 text-[15px] leading-relaxed text-white/60">{f.body}</p>
                   </Reveal>
                 </li>

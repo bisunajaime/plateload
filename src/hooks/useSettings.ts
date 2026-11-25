@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BARS, type Brand, type Unit } from '../data/plates'
 import type { RankMode } from '../lib/combinations'
-import { MAX_TARGET, RANK_MODES, STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
+import { setHapticsEnabled, setSoundEnabled } from '../feel'
+import { APP_TABS, MAX_TARGET, RANK_MODES, STORAGE_KEY, applyBrand, brandForUnit, defaultSettings, hydrate, type Settings } from '../lib/settings'
 
 /* ------------------------------------------------------------------- URL sync */
 
@@ -34,6 +35,8 @@ function readUrl(base: Settings): Settings {
   if (sleeveView != null) s.closeUp = sleeveView === '1'
   const change = q.get('change')
   if (change != null) s.includeChange = change === '1'
+  const tab = q.get('tab')
+  if (tab && (APP_TABS as string[]).includes(tab)) s.tab = tab as Settings['tab']
   return s
 }
 
@@ -46,14 +49,30 @@ function writeUrl(s: Settings) {
   q.set('bar', s.barId === 'custom' && s.customBarWeight ? String(s.customBarWeight) : s.barId)
   q.set('collars', s.collars ? '1' : '0')
   if (!s.includeChange) q.set('change', '0')
+  if (s.tab !== 'load') q.set('tab', s.tab)
   const next = `${window.location.pathname}?${q.toString()}`
   window.history.replaceState(null, '', next)
 }
 
 /* --------------------------------------------------------------------- hook */
 
+/** What a shared link may change about your setup — and what Undo puts back. */
+export const SHARED_KEYS = [
+  'brand',
+  'unit',
+  'barId',
+  'customBarWeight',
+  'collarKind',
+  'collarWeight',
+  'collars',
+  'includeChange',
+  'target',
+  'inventory',
+] as const
+
 export function useSettings() {
-  const [settings, setSettings] = useState<Settings>(() => {
+  // Read once: your stored settings, then whatever a link asks for on top.
+  const [boot] = useState(() => {
     let base = defaultSettings()
     let stored = false
     try {
@@ -71,8 +90,14 @@ export function useSettings() {
         window.innerWidth < 640 && window.matchMedia('(prefers-color-scheme: dark)').matches
       base = { ...base, gymMode: smallAndDark }
     }
-    return readUrl(base)
+    const opened = readUrl(base)
+    // Someone else's link changed your gym (not just the weight): remember yours,
+    // so the app can say so and offer to put it back.
+    const setupChanged = stored && SHARED_KEYS.some((k) => k !== 'target' && k !== 'inventory' && JSON.stringify(opened[k]) !== JSON.stringify(base[k]))
+    const yours = setupChanged ? (Object.fromEntries(SHARED_KEYS.map((k) => [k, base[k]])) as Partial<Settings>) : null
+    return { opened, yours }
   })
+  const [settings, setSettings] = useState<Settings>(boot.opened)
 
   // Persist, debounced enough to survive a stepper being hammered.
   const timer = useRef<number | undefined>(undefined)
@@ -107,6 +132,10 @@ export function useSettings() {
   useEffect(() => {
     document.documentElement.classList.toggle('gym-mode', settings.gymMode)
   }, [settings.gymMode])
+
+  // The feel modules are global (a sound can fire from anywhere); keep them in step.
+  useEffect(() => setSoundEnabled(settings.sound), [settings.sound])
+  useEffect(() => setHapticsEnabled(settings.haptics), [settings.haptics])
 
   const update = useCallback((patch: Partial<Settings> | ((s: Settings) => Partial<Settings>)) => {
     setSettings((prev) => ({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) }))
@@ -148,13 +177,10 @@ export function useSettings() {
     [settings.theme],
   )
 
-  return { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset, isDark }
+  return { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset, isDark, sharedFrom: boot.yours }
 }
 
 function remember(s: Settings, weight: number, unit: Unit): Settings {
   const list = [{ weight, unit }, ...s.lastWeights.filter((x) => !(x.weight === weight && x.unit === unit))]
   return { ...s, lastWeights: list.slice(0, 15) }
 }
-
-export const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches

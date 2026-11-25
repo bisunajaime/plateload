@@ -1,69 +1,82 @@
-import { memo } from 'react'
-import type { CollarKind, PlateDef } from '../data/plates'
+import { forwardRef, memo } from 'react'
+import type { PlateDef } from '../data/plates'
 import type { Combo } from '../lib/combinations'
-import { platesCompact } from '../lib/format'
-import { SleeveThumb } from './BarbellSVG'
+import { fmt } from '../lib/format'
+import { PlatePill } from './kit/PlatePill'
+import type { WayReason } from './ways/reasons'
 
-export interface ComboCardProps {
-  combo: Combo
-  plates: PlateDef[]
-  collarKind: CollarKind | null
-  collarWidthMm: number
-  sleeveMm: number
-  selected: boolean
-  onSelect: () => void
-}
-
-/** One way to load the bar, as a row you can pick. */
-export const ComboCard = memo(function ComboCard({
-  combo,
-  plates,
-  collarKind,
-  collarWidthMm,
-  sleeveMm,
-  selected,
-  onSelect,
-}: ComboCardProps) {
-  const list = combo.plates.length ? platesCompact(combo.plates) : 'Empty bar'
-  const details = [
-    `${combo.plateCount} plate${combo.plateCount === 1 ? '' : 's'}`,
-    combo.changeCount > 0 ? `${combo.changeCount} change` : null,
-    `${Math.round(combo.sleeveMm)} of ${sleeveMm} mm`,
-  ].filter(Boolean)
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition sm:px-4 ${
-        selected ? 'bg-surface2/70' : 'hover:bg-surface2/40'
-      }`}
-    >
-      <span className="h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2/70 p-1">
-        <SleeveThumb plates={plates} combo={combo} collarKind={collarKind} collarWidthMm={collarWidthMm} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold tabular-nums">{list}</span>
-        <span className={`block truncate text-xs tabular-nums ${combo.overCapacity ? 'font-semibold text-bad' : 'text-muted'}`}>
-          {combo.overCapacity ? 'Too wide for the sleeve · ' : ''}
-          {details.join(' · ')}
-          {combo.competitionLegal && !combo.overCapacity ? ' · competition' : ''}
-        </span>
-      </span>
-      {/* A radio-style mark: the row you picked is the bar above. */}
-      <span
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
-          selected ? 'border-ink bg-ink text-bg' : 'border-line'
+/**
+ * One way to load the bar, as a radio you can pick: the plates each side in
+ * loading order, how many, and one plain reason it's worth a look.
+ */
+export const ComboCard = memo(
+  forwardRef<
+    HTMLButtonElement,
+    {
+      combo: Combo
+      byId: Map<string, PlateDef>
+      unit: string
+      reason: WayReason
+      /** A sentence that replaces the reason — for the top recommendation. */
+      why?: string
+      selected: boolean
+      /** The one radio in the group that takes Tab. */
+      focusable: boolean
+      onSelect: () => void
+    }
+  >(function ComboCard({ combo, byId, unit, reason, why, selected, focusable, onSelect }, ref) {
+    const count = combo.plateCount
+    const summary = combo.plates.length
+      ? `${combo.plates.map((p) => `${p.count > 1 ? `${p.count} × ` : ''}${fmt(p.weight)}`).join(', ')} ${unit} each side`
+      : 'Just the bar'
+    return (
+      <button
+        ref={ref}
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        aria-label={`${summary}. ${(why ?? reason.text).replace(/\.$/, '')}.`}
+        tabIndex={focusable ? 0 : -1}
+        onClick={onSelect}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
+          selected ? 'bg-surface2 shadow-[inset_0_0_0_2px_rgb(var(--ink))]' : 'hover:bg-surface2/60'
         }`}
-        aria-hidden="true"
       >
-        {selected && (
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12.5 10 17l9-10" />
-          </svg>
-        )}
-      </span>
-    </button>
-  )
-})
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5" aria-hidden="true">
+            {combo.plates.length ? (
+              combo.plates.map((p) => {
+                const def = byId.get(p.id)
+                return def ? <PlatePill key={p.id} plate={def} count={p.count} size="sm" /> : null
+              })
+            ) : (
+              <span className="text-base font-semibold">Just the bar</span>
+            )}
+          </span>
+          <span className="mt-1.5 block text-sm" aria-hidden="true">
+            {combo.plates.length > 0 && (
+              <span className="font-cond text-base font-semibold tabular-nums text-ink">
+                {count} plate{count === 1 ? '' : 's'} a side
+                <span className="text-muted"> · </span>
+              </span>
+            )}
+            <span className={reason.warn ? 'font-semibold text-bad' : 'text-muted'}>{why ?? reason.text}</span>
+          </span>
+        </span>
+        {/* The row on the bar right now: a filled mark, not a colour alone. */}
+        <span
+          aria-hidden="true"
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
+            selected ? 'border-ink bg-ink text-bg' : 'border-edge'
+          }`}
+        >
+          {selected && (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12.5 10 17l9-10" />
+            </svg>
+          )}
+        </span>
+      </button>
+    )
+  }),
+)

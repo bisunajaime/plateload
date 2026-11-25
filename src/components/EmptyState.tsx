@@ -1,69 +1,71 @@
 import type { Unit } from '../data/plates'
 import type { SolveReason } from '../lib/combinations'
+import { cantLoadReason } from './load/reason'
 import { fmt } from '../lib/format'
+import { Button } from './kit/Button'
 
-/** Stands in for the plates when the target can't be built — and offers the nearest that can. */
+/**
+ * Stands in for the plates when the target can't be built: says why, offers
+ * the nearest weights that can be, and the fix that would make it possible.
+ */
 export function EmptyState({
   reason,
   target,
   unit,
   base,
+  step,
   nearestBelow,
   nearestAbove,
   onPick,
-  changeOff,
-  onEnableChange,
-  onOpenSetup,
+  smallPlatesOff,
+  onUseSmallPlates,
+  onEditPlates,
 }: {
   reason: SolveReason
   target: number
   unit: Unit
   base: number
+  step: number
   nearestBelow: number | null
   nearestAbove: number | null
   onPick: (w: number) => void
-  changeOff: boolean
-  onEnableChange: () => void
-  onOpenSetup: () => void
+  smallPlatesOff: boolean
+  onUseSmallPlates: () => void
+  onEditPlates: () => void
 }) {
-  const message =
-    reason === 'below-bar'
-      ? `Lighter than the bar — bar and collars weigh ${fmt(base)} ${unit}.`
-      : reason === 'no-plates'
-        ? 'No plates in your inventory yet.'
-        : reason === 'too-wide'
-          ? `Your plates make ${fmt(target)} ${unit}, but not in a stack that fits on the sleeve.`
-          : changeOff
-          ? `Can’t make ${fmt(target)} ${unit} with bumpers alone.`
-          : `Your plates can’t make ${fmt(target)} ${unit} evenly.`
-
+  const { title, why } = cantLoadReason({ reason, target, unit, base, step, smallPlatesOff })
+  // Small plates fill gaps between bumpers; they can't lighten a bar or widen a sleeve.
+  const gap = reason === 'unreachable' || reason === 'not-divisible'
   return (
-    <div className="flex flex-col items-center gap-3 text-center fade-up">
-      <p className="text-sm font-medium text-bad">{message}</p>
+    <div className="fade-up rounded-2xl border border-bad/50 bg-bad/[0.06] p-4 text-center">
+      <p className="text-lg font-semibold text-ink">{title}</p>
+      <p className="mt-1 text-base text-muted">{why}</p>
       {(nearestBelow != null || nearestAbove != null) && (
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
           {nearestBelow != null && (
-            <button type="button" className="chip" onClick={() => onPick(nearestBelow)}>
+            <Button size="sm" onClick={() => onPick(nearestBelow)}>
               Load {fmt(nearestBelow)} {unit}
-            </button>
+            </Button>
           )}
           {nearestAbove != null && (
-            <button type="button" className="chip" onClick={() => onPick(nearestAbove)}>
+            <Button size="sm" onClick={() => onPick(nearestAbove)}>
               Load {fmt(nearestAbove)} {unit}
-            </button>
+            </Button>
           )}
         </div>
       )}
-      {/* Change plates fill gaps between bumpers; they can't lighten a bar or widen a sleeve. */}
-      {changeOff && (reason === 'unreachable' || reason === 'not-divisible') ? (
-        <button type="button" className="text-sm font-medium text-ink underline underline-offset-4" onClick={onEnableChange}>
-          Use change plates
-        </button>
-      ) : reason === 'no-plates' || reason === 'unreachable' || reason === 'not-divisible' ? (
-        <button type="button" className="text-sm font-medium text-muted underline underline-offset-4" onClick={onOpenSetup}>
-          Edit your plates
-        </button>
-      ) : null}
+      {(gap || reason === 'no-plates') && (
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          {gap && smallPlatesOff && (
+            <Button size="sm" variant="ghost" onClick={onUseSmallPlates}>
+              Use small plates
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={onEditPlates}>
+            Edit your plates
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

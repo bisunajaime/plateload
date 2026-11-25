@@ -86,7 +86,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms, background-color 160ms;
+  transition: transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick), background-color var(--dur-quick);
 }
 .cta-primary {
   min-height: 56px;
@@ -122,11 +122,11 @@
     radial-gradient(45% 40% at 85% 35%, rgb(200 16 46 / 0.10), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-.hero-copy > * { animation: rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.hero-copy > * { animation: rise 700ms var(--ease-out) both; }
 .hero-copy > :nth-child(2) { animation-delay: 80ms; }
 .hero-copy > :nth-child(3) { animation-delay: 160ms; }
 .hero-copy > :nth-child(4) { animation-delay: 240ms; }
-.demo { animation: rise 800ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.demo { animation: rise 800ms 200ms var(--ease-out) both; }
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(18px); }
@@ -148,9 +148,12 @@
   border-radius: 999px;
   background: var(--yellow);
   transform-origin: left center;
-  animation: swipe 700ms 600ms cubic-bezier(0.6, 0, 0.2, 1) both;
+  animation: swipe 700ms 600ms var(--ease-in-out) both;
   z-index: -1;
 }
+/* Below the fold the swipe waits for its section to arrive, instead of
+   drawing itself where nobody is looking. */
+.reveal:not(.is-in) .chalk-underline::after { animation-play-state: paused; }
 @keyframes swipe {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
@@ -470,7 +473,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  animation: rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: rise 320ms var(--ease-out) both;
 }
 .bay-swatch {
   width: 14px;
@@ -524,49 +527,7 @@
 .bay-mark.is-on:nth-child(5),
 .bay-mark.is-on:nth-child(7) { color: #0b0b0c; }
 
-/* --------------------------------------------------------- rolling number */
-
-/* Room above and below the glyphs, faded out, so a digit blurs away into the
-   edge instead of being cut off by it. */
-.roll {
-  display: inline-block;
-  padding-block: 0.28em;
-  margin-block: -0.28em;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
-}
-.roll-digits { display: inline-flex; }
-.roll-slot { position: relative; display: inline-block; }
-.roll-in,
-.roll-out {
-  display: inline-block;
-  animation-duration: 460ms;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation-fill-mode: both;
-  will-change: transform, filter, opacity;
-}
-.roll-out { position: absolute; inset: 0; }
-.roll-in.up { animation-name: roll-in-up; }
-.roll-out.up { animation-name: roll-out-up; }
-.roll-in.down { animation-name: roll-in-down; }
-.roll-out.down { animation-name: roll-out-down; }
-
-@keyframes roll-in-up {
-  from { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
-  to { transform: none; filter: blur(0); opacity: 1; }
-}
-@keyframes roll-out-up {
-  from { transform: none; filter: blur(0); opacity: 1; }
-  to { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
-}
-@keyframes roll-in-down {
-  from { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
-  to { transform: none; filter: blur(0); opacity: 1; }
-}
-@keyframes roll-out-down {
-  from { transform: none; filter: blur(0); opacity: 1; }
-  to { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
-}
+/* The rolling number's styles live in index.css — the app uses it too. */
 
 /* ---------------------------------------------------------- rolling plate */
 
@@ -589,7 +550,7 @@
 .reveal {
   opacity: 0;
   transform: translateY(22px);
-  transition: opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
 }
 .reveal.is-in { opacity: 1; transform: none; }
 
@@ -597,5 +558,4 @@
   .reveal { opacity: 1; transform: none; }
   .live-dot::before { animation: none; }
   .feature-plate { transform: none; }
-  .roll-out { display: none; }
 }

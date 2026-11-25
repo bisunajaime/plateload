@@ -9,8 +9,13 @@ describe('a brand carries its unit', () => {
     expect(unitForBrand('eleiko')).toBe('kg')
     expect(s.unit).toBe('kg')
     expect(s.barId).toBe('oly-men-20')
-    expect(resolveLoadout(s).collarWeight).toBe(COLLARS['eleiko-competition'].kg)
-    expect(resolveLoadout(s).base).toBe(25)
+    // A gym's spring clips, not 2.5 kg competition collars, unless you choose them.
+    expect(s.collarKind).toBe('generic')
+    expect(resolveLoadout(s).collarWeight).toBe(0)
+    expect(resolveLoadout(s).base).toBe(20)
+    const comp = { ...s, collarKind: 'eleiko-competition' as const }
+    expect(resolveLoadout(comp).collarWeight).toBe(COLLARS['eleiko-competition'].kg)
+    expect(resolveLoadout(comp).base).toBe(25)
   })
 
   it('Metcon is a pound brand', () => {
@@ -106,11 +111,22 @@ describe('stored settings', () => {
 })
 
 describe('end to end through the app’s own settings', () => {
-  it('an Eleiko session loads 100 kg as 25 + 10 + 2.5 a side', () => {
-    const s = applyBrand(defaultSettings(), 'eleiko')
+  it('an Eleiko platform session loads 100 kg as 25 + 10 + 2.5 a side', () => {
+    const s = { ...applyBrand(defaultSettings(), 'eleiko'), collarKind: 'eleiko-competition' as const }
     const res = solve(buildSolveInput(s, 100), 'recommended')
     expect(res.ok).toBe(true)
     expect(res.combos[0].plates.map((p) => p.weight)).toEqual([25, 10, 2.5])
+  })
+
+  it('with ordinary clips, 100 kg on an Eleiko bar is two 20s a side — matching plates win a tie', () => {
+    const s = applyBrand(defaultSettings(), 'eleiko')
+    const top = solve(buildSolveInput(s, 100), 'recommended').combos[0]
+    expect(top.plates.map((p) => [p.weight, p.count])).toEqual([[20, 2]])
+  })
+
+  it('225 lb is two 45s a side, not a 55 and a 35', () => {
+    const top = solve(buildSolveInput(defaultSettings(), 225), 'recommended').combos[0]
+    expect(top.plates.map((p) => [p.weight, p.count])).toEqual([[45, 2]])
   })
 
   it('a first run is Metcon pounds, and its opening target is loadable', () => {
@@ -152,5 +168,56 @@ describe('switching brand', () => {
   it('keeps collars off when they were off', () => {
     const s = applyBrand({ ...defaultSettings(), collars: false }, 'eleiko')
     expect(s.collars).toBe(false)
+  })
+})
+
+describe('feedback settings', () => {
+  it('sound starts off and haptics on', () => {
+    const s = defaultSettings()
+    expect(s.sound).toBe(false)
+    expect(s.haptics).toBe(true)
+  })
+
+  it('a store from before these settings existed gets the defaults', () => {
+    const s = hydrate({ target: 140, brand: 'eleiko', unit: 'kg' })
+    expect(s.sound).toBe(false)
+    expect(s.haptics).toBe(true)
+    expect(s.target).toBe(140)
+  })
+
+  it('keeps stored choices and drops malformed ones', () => {
+    expect(hydrate({ sound: true, haptics: false })).toMatchObject({ sound: true, haptics: false })
+    expect(hydrate({ sound: 'yes', haptics: 0 })).toMatchObject({ sound: false, haptics: true })
+  })
+})
+
+describe('the app remembers where you were', () => {
+  it('opens on Load, and keeps a valid stored tab', () => {
+    expect(defaultSettings().tab).toBe('load')
+    expect(hydrate({ tab: 'warmup' }).tab).toBe('warmup')
+    expect(hydrate({ tab: 'settings' }).tab).toBe('load')
+  })
+})
+
+describe('warm-up choices are remembered, and checked', () => {
+  it('defaults to a 40/60/80 ramp', () => {
+    expect(defaultSettings().warmup).toEqual({ tool: 'ramp', ramp: [0.4, 0.6, 0.8], oneRm: null, step: 5 })
+  })
+  it('keeps good stored choices and drops bad ones', () => {
+    expect(hydrate({ warmup: { tool: 'percent', ramp: [0.5, 0.75], oneRm: 140, step: 2.5 } }).warmup).toEqual({
+      tool: 'percent',
+      ramp: [0.5, 0.75],
+      oneRm: 140,
+      step: 2.5,
+    })
+    expect(hydrate({ warmup: { tool: 'x', ramp: [2], oneRm: -1, step: 7 } }).warmup).toEqual(defaultSettings().warmup)
+  })
+})
+
+describe('the welcome', () => {
+  it('shows on a first visit only', () => {
+    expect(defaultSettings().intro).toBe(true)
+    expect(hydrate({ target: 225 }).intro).toBe(false)
+    expect(hydrate({ intro: true }).intro).toBe(true)
   })
 })

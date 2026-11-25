@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { BarDef, CollarKind, PlateDef, Unit } from '../data/plates'
+import { duration, ease, feedback, useReducedMotion } from '../feel'
 import type { Combo } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import type { PreviewPos } from '../lib/settings'
@@ -8,16 +10,35 @@ import { BarbellSVG, SleeveThumb } from './BarbellSVG'
 const MARGIN = 12
 /** Clear of the sticky header. */
 const TOP_LIMIT = 68
-const BOTTOM_LIMIT = 12
+/** Clear of the tab bar (and the home indicator) on a phone. */
+const BOTTOM_LIMIT = 84
 /** Movement under this is a tap, not a drag. */
 const DRAG_SLOP = 5
+/** Picked up, the card rises a little off the page. */
+const LIFT = 1.03
+/** Hidden, it waits just above where it parks. */
+const HIDDEN_OFFSET = -8
+/** How long a peek keeps the card up after a change made off screen. */
+const PEEK_MS = 1600
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi)
 
+/** The card's current on-screen offset — mid-transition included — from its computed `translate`. */
+function currentOffset(el: HTMLElement): { x: number; y: number } {
+  const [x = 0, y = 0] = getComputedStyle(el)
+    .translate.split(' ')
+    .map((v) => parseFloat(v) || 0)
+  return { x, y }
+}
+
 /**
  * A thumbnail of the loaded sleeve that stands in for the hero bar whenever it
- * is off screen. Drag it anywhere; it snaps back to whichever edge it was
+ * is off screen. Drag it anywhere; it springs back to whichever edge it was
  * nearest, AssistiveTouch style, and remembers where you left it.
+ *
+ * It is positioned entirely with `translate` (and lifted with `scale`), so the
+ * snap to either edge animates on the compositor. While a finger is on it the
+ * position is written straight to the element: a drag never re-renders React.
  */
 export function MiniBar({
   show,
@@ -33,6 +54,7 @@ export function MiniBar({
   onMove,
   onClick,
   animate = true,
+  peek,
 }: {
   show: boolean
   bar: BarDef
@@ -48,8 +70,12 @@ export function MiniBar({
   onMove: (pos: PreviewPos) => void
   onClick: () => void
   animate?: boolean
+  /** Bump this to show the card briefly even when `show` is false — a change made while the bar is off screen. */
+  peek?: number
 }) {
   const ref = useRef<HTMLButtonElement>(null)
+  const reduced = useReducedMotion()
+  const still = !animate || reduced
   /**
    * Drag origin lives in refs, not state: a quick tap fires pointerdown and
    * pointerup in one tick, and a handler reading not-yet-flushed state would
@@ -59,67 +85,137 @@ export function MiniBar({
   const at = useRef({ x: 0, y: 0 })
   const dragging = useRef(false)
   const moved = useRef(false)
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null)
-  const [viewport, setViewport] = useState(() => (typeof window === 'undefined' ? 800 : window.innerHeight))
-  const [cardHeight, setCardHeight] = useState(120)
+  /** Until this time the spring to an edge is in flight; a re-render must not swap its curve. */
+  const snapUntil = useRef(0)
+  const placed = useRef(false)
+  const [viewport, setViewport] = useState(() =>
+    typeof window === 'undefined' ? { w: 400, h: 800 } : { w: document.documentElement.clientWidth, h: window.innerHeight },
+  )
+  const [card, setCard] = useState({ w: 150, h: 120 })
+
+  // A peek: shown for a moment, then back to whatever `show` says.
+  const [peeking, setPeeking] = useState(false)
+  const [lastPeek, setLastPeek] = useState(peek)
+  if (peek !== lastPeek) {
+    setLastPeek(peek)
+    setPeeking(true)
+  }
+  useEffect(() => {
+    if (!peeking) return
+    const t = window.setTimeout(() => setPeeking(false), PEEK_MS)
+    return () => window.clearTimeout(t)
+  }, [peeking, peek])
+  const visible = show || peeking
 
   useEffect(() => {
     const measure = () => {
-      setViewport(window.innerHeight)
-      if (ref.current) setCardHeight(ref.current.offsetHeight)
+      setViewport({ w: document.documentElement.clientWidth, h: window.innerHeight })
+      if (ref.current) setCard({ w: ref.current.offsetWidth, h: ref.current.offsetHeight })
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [])
 
-  const parkedTop = clamp(pos.y * viewport, TOP_LIMIT, Math.max(TOP_LIMIT, viewport - cardHeight - BOTTOM_LIMIT))
+  const parkedX = pos.side === 'left' ? MARGIN : Math.max(MARGIN, viewport.w - card.w - MARGIN)
+  const parkedY = clamp(pos.y * viewport.h, TOP_LIMIT, Math.max(TOP_LIMIT, viewport.h - card.h - BOTTOM_LIMIT))
+
+  const restingTransition = (opacityOnly: boolean) =>
+    opacityOnly
+      ? `opacity ${duration.base}ms ${ease.out}`
+      : `translate ${duration.base}ms ${ease.out}, transform ${duration.base}ms ${ease.out}, opacity ${duration.base}ms ${ease.out}, scale ${duration.quick}ms ${ease.out}`
+
+  // Park it — on mount without motion, afterwards with the house curve (or
+  // still, under reduced motion). A spring already on its way is left alone.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || dragging.current) return
+    const first = !placed.current
+    placed.current = true
+    if (performance.now() >= snapUntil.current) el.style.transition = first ? 'none' : restingTransition(still)
+    el.style.translate = `${parkedX}px ${parkedY}px`
+    el.style.scale = '1'
+    el.style.transform = visible ? 'none' : `translateY(${HIDDEN_OFFSET}px)`
+    el.style.opacity = visible ? '1' : '0'
+  }, [parkedX, parkedY, visible, still])
 
   const down = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const el = ref.current
-    if (!el || !show) return
-    const r = el.getBoundingClientRect()
-    grab.current = { dx: e.clientX - r.left, dy: e.clientY - r.top }
-    at.current = { x: r.left, y: r.top }
+    if (!el || !visible) return
+    // Start from where it is on screen right now, mid-spring if need be — and
+    // stop the spring there, so the card never jumps under the finger.
+    const { x, y } = currentOffset(el)
+    snapUntil.current = 0
+    el.style.transition = `scale ${duration.quick}ms ${ease.out}, opacity ${duration.base}ms ${ease.out}`
+    el.style.translate = `${x}px ${y}px`
+    grab.current = { dx: e.clientX - x, dy: e.clientY - y }
+    at.current = { x, y }
     dragging.current = true
     moved.current = false
     el.setPointerCapture?.(e.pointerId)
-    setDrag({ x: r.left, y: r.top })
   }
 
   const move = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const el = ref.current
     if (!dragging.current || !el) return
-    const x = clamp(e.clientX - grab.current.dx, MARGIN, window.innerWidth - el.offsetWidth - MARGIN)
+    const x = clamp(e.clientX - grab.current.dx, MARGIN, document.documentElement.clientWidth - el.offsetWidth - MARGIN)
     const y = clamp(e.clientY - grab.current.dy, TOP_LIMIT, window.innerHeight - el.offsetHeight - BOTTOM_LIMIT)
-    if (Math.abs(x - at.current.x) + Math.abs(y - at.current.y) > DRAG_SLOP) moved.current = true
+    if (!moved.current && Math.abs(x - at.current.x) + Math.abs(y - at.current.y) <= DRAG_SLOP) return
+    if (!moved.current) {
+      // A real drag, not a tap: only now does it lift, so a tap never flickers.
+      moved.current = true
+      if (!still) el.style.scale = String(LIFT)
+      el.style.cursor = 'grabbing'
+    }
     at.current = { x, y }
-    setDrag({ x, y })
+    el.style.translate = `${x}px ${y}px`
   }
 
   const up = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!dragging.current) return
+    const el = ref.current
+    if (!dragging.current || !el) return
     dragging.current = false
-    ref.current?.releasePointerCapture?.(e.pointerId)
-    const width = ref.current?.offsetWidth ?? 0
-    setDrag(null)
-    if (!moved.current) return
-    // Snap to whichever edge the card's middle ended up nearest.
-    const side: PreviewPos['side'] = at.current.x + width / 2 < window.innerWidth / 2 ? 'left' : 'right'
-    onMove({ side, y: at.current.y / window.innerHeight })
+    el.releasePointerCapture?.(e.pointerId)
+    el.style.cursor = ''
+    if (!moved.current) {
+      // A tap: put it back exactly as it was parked.
+      el.style.transition = restingTransition(still)
+      el.style.translate = `${parkedX}px ${parkedY}px`
+      return
+    }
+    // Snap to whichever edge the card's middle ended up nearest — springing
+    // there on its own, then telling the app where it now lives.
+    const side: PreviewPos['side'] = at.current.x + el.offsetWidth / 2 < document.documentElement.clientWidth / 2 ? 'left' : 'right'
+    const x = side === 'left' ? MARGIN : Math.max(MARGIN, document.documentElement.clientWidth - el.offsetWidth - MARGIN)
+    const y = at.current.y
+    if (still) {
+      el.style.transition = 'none'
+    } else {
+      snapUntil.current = performance.now() + duration.settle
+      el.style.transition = `translate ${duration.settle}ms ${ease.seat}, scale ${duration.quick}ms ${ease.out}, opacity ${duration.base}ms ${ease.out}`
+    }
+    el.style.translate = `${x}px ${y}px`
+    el.style.scale = '1'
+    feedback('snap')
+    onMove({ side, y: y / window.innerHeight })
   }
 
-  const style: CSSProperties = drag
-    ? { left: drag.x, top: drag.y, right: 'auto' }
-    : pos.side === 'left'
-      ? { left: MARGIN, top: parkedTop, right: 'auto' }
-      : { right: MARGIN, top: parkedTop, left: 'auto' }
-
-  return (
+  // Portalled for the same reason as sheets: a transformed ancestor would capture `fixed`.
+  return createPortal(
     <button
       ref={ref}
       type="button"
       onPointerDown={down}
+      // Dragging isn't the only way to move it: arrow keys park it on the other
+      // side or nudge it up and down.
+      onKeyDown={(e) => {
+        const nudge = { ArrowUp: -0.08, ArrowDown: 0.08 }[e.key]
+        const side = { ArrowLeft: 'left', ArrowRight: 'right' }[e.key] as PreviewPos['side'] | undefined
+        if (nudge === undefined && !side) return
+        e.preventDefault()
+        onMove({ side: side ?? pos.side, y: Math.min(0.85, Math.max(0, pos.y + (nudge ?? 0))) })
+        feedback('snap')
+      }}
       onPointerMove={move}
       onPointerUp={up}
       onPointerCancel={up}
@@ -132,13 +228,13 @@ export function MiniBar({
         }
         onClick()
       }}
-      aria-hidden={!show}
-      tabIndex={show ? 0 : -1}
-      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Drag to move, or activate to jump to the barbell.`}
-      style={style}
-      className={`fixed z-40 w-[150px] cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-line bg-surface/95 shadow-xl backdrop-blur sm:w-[200px] ${
-        drag ? 'cursor-grabbing scale-[1.03]' : animate ? 'transition-[opacity,transform,top,left,right] duration-200' : ''
-      } ${show ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'}`}
+      aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
+      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Activate to go back to the barbell; arrow keys move it.`}
+      style={{ left: 0, top: 0 }}
+      className={`fixed z-40 w-[150px] cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-line bg-surface/95 opacity-0 shadow-xl backdrop-blur will-change-transform sm:w-[200px] ${
+        visible ? '' : 'pointer-events-none'
+      }`}
     >
       {/* Cropped to the stack itself — at this size the bare sleeve is wasted space. */}
       <div className="pointer-events-none h-[72px] px-1.5 pt-1.5 sm:h-[86px]">
@@ -166,6 +262,7 @@ export function MiniBar({
           {!loadable ? <span className="text-bad">can’t load</span> : combo?.plates.length ? `${fmt(combo.perSide)}/side` : 'bar only'}
         </span>
       </div>
-    </button>
+    </button>,
+    document.body,
   )
 }

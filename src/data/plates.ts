@@ -59,7 +59,10 @@ export function inkOn(hex: string): string {
     return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
   })
   const L = 0.2126 * r + 0.7152 * g + 0.0722 * b
-  return L > 0.45 ? '#141416' : '#FFFFFF'
+  // Whichever reads better: a fixed threshold put white on Metcon's grey 10 lb (2.6:1).
+  const onWhite = 1.05 / (L + 0.05)
+  const onDark = (L + 0.05) / (0.0074 + 0.05)
+  return onDark >= onWhite ? '#141416' : '#FFFFFF'
 }
 
 /* ----------------------------------------------------------- Metcon (spec) */
@@ -513,7 +516,7 @@ export const COLLARS: Record<CollarKind, CollarDef> = {
     kg: 0,
     lb: 0,
     widthMm: 22,
-    note: 'Rubber spring clip — adds no weight',
+    note: 'Quick-release clip — light enough to count as 0',
   },
   generic: {
     kind: 'generic',
@@ -525,8 +528,13 @@ export const COLLARS: Record<CollarKind, CollarDef> = {
   },
 }
 
+/**
+ * The collar a gym actually uses: Metcon's Fast Clip, or an ordinary spring
+ * clip on an Eleiko bar. Competition collars (2.5 kg each) are one choice away
+ * in Gym — defaulting to them made a training-hall load 5 kg light.
+ */
 export function defaultCollarKind(brand: Brand): CollarKind {
-  return brand === 'metcon' ? 'metcon-fastclip' : 'eleiko-competition'
+  return brand === 'metcon' ? 'metcon-fastclip' : 'generic'
 }
 
 /* ------------------------------------------------------- inventory presets */
@@ -548,7 +556,7 @@ export const PRESETS: InventoryPreset[] = [
   {
     id: 'eleiko-competition',
     label: 'Eleiko competition platform',
-    hint: 'Full IWF set incl. 0.25 kg change plates',
+    hint: 'The full IWF set, down to 0.25 kg — every 0.5 kg weight',
     brand: 'eleiko',
     unit: 'kg',
     counts: inv('eleiko', 'kg', {
@@ -558,10 +566,26 @@ export const PRESETS: InventoryPreset[] = [
   {
     id: 'eleiko-training',
     label: 'Eleiko training hall',
-    hint: 'Bumpers plus 5 / 2.5 / 1.25-style change',
+    hint: 'Plenty of bumpers, plus 5, 2.5 and 2–0.5 kg small plates',
     brand: 'eleiko',
     unit: 'kg',
     counts: inv('eleiko', 'kg', { 25: 8, 20: 8, 15: 4, 10: 4, 5: 6, 2.5: 6, 2: 2, 1.5: 2, 1: 2, 0.5: 2, 0.25: 0 }),
+  },
+  {
+    id: 'eleiko-bumpers-kg',
+    label: 'Bumpers only (kg)',
+    hint: '25 / 20 / 15 / 10 kg bumpers, no small plates — loads in 10 kg jumps',
+    brand: 'eleiko',
+    unit: 'kg',
+    counts: inv('eleiko', 'kg', { 25: 4, 20: 4, 15: 4, 10: 4, 5: 0, 2.5: 0, 2: 0, 1.5: 0, 1: 0, 0.5: 0, 0.25: 0 }),
+  },
+  {
+    id: 'eleiko-home-kg',
+    label: 'Home gym (kg)',
+    hint: 'Sparse — 20 × 4, 10 × 2, 5 × 2, 2.5 × 2',
+    brand: 'eleiko',
+    unit: 'kg',
+    counts: inv('eleiko', 'kg', { 25: 0, 20: 4, 15: 0, 10: 2, 5: 2, 2.5: 2, 2: 0, 1.5: 0, 1: 0, 0.5: 0, 0.25: 0 }),
   },
   {
     id: 'eleiko-lb',
@@ -574,7 +598,7 @@ export const PRESETS: InventoryPreset[] = [
   {
     id: 'metcon-colored-lb',
     label: 'Metcon coloured gym (lb)',
-    hint: 'Well-stocked box, change plates on',
+    hint: 'A well-stocked box: 55 to 10 lb bumpers plus 5 and 2.5 lb',
     brand: 'metcon',
     unit: 'lb',
     counts: inv('metcon', 'lb', { 55: 4, 45: 8, 35: 4, 25: 4, 15: 4, 10: 4, 5: 4, 2.5: 4 }),
@@ -590,7 +614,7 @@ export const PRESETS: InventoryPreset[] = [
   {
     id: 'metcon-bumpers-lb',
     label: 'Metcon bumpers only (lb)',
-    hint: 'Catalogue as sold — no change plates',
+    hint: 'The bumper range as sold, no small plates — loads in 10 lb jumps',
     brand: 'metcon',
     unit: 'lb',
     counts: inv('metcon', 'lb', { 55: 4, 45: 8, 35: 4, 25: 4, 15: 4, 10: 4, 5: 0, 2.5: 0 }),
@@ -606,7 +630,7 @@ export const PRESETS: InventoryPreset[] = [
   {
     id: 'home-lb',
     label: 'Home gym (lb)',
-    hint: 'Sparse — 45 × 4, 25 × 2, 10 × 2',
+    hint: 'Sparse — 45 × 4, 25 × 2, 10 × 2, 5 × 2, 2.5 × 2',
     brand: 'metcon',
     unit: 'lb',
     counts: inv('metcon', 'lb', { 55: 0, 45: 4, 35: 0, 25: 2, 15: 0, 10: 2, 5: 2, 2.5: 2 }),

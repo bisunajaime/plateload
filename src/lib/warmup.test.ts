@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { getPlateSet } from '../data/plates'
 import { denomsFromPlates, type SolveInput } from './combinations'
-import { nextJump, percentTable, warmupPlan } from './warmup'
+import { applyBrand, buildSolveInput, defaultSettings } from './settings'
+import { RAMP_PRESETS, nextJump, percentTable, platesFor, warmupPlan } from './warmup'
 
 function metconKg(includeChange = true): SolveInput {
   const plates = getPlateSet({ brand: 'metcon', unit: 'kg' })
@@ -65,5 +66,34 @@ describe('next jump', () => {
   it('competition increment lands on a whole kilo', () => {
     const j = nextJump(metconKg(), 100.5)
     expect(j.competitionUp).toBe(102)
+  })
+})
+
+describe('plates for each row', () => {
+  it('gives the recommended stack for one side, heaviest first', () => {
+    const plates = platesFor(metconKg(), 100)
+    expect(plates).not.toBeNull()
+    expect(plates!.reduce((sum, p) => sum + p.weight * p.count, 0)).toBe(40)
+    expect(plates!.map((p) => p.weight)).toEqual([...plates!.map((p) => p.weight)].sort((a, b) => b - a))
+  })
+
+  it('an empty list is the bare bar; null is a weight the plates can’t make', () => {
+    expect(platesFor(metconKg(), 20)).toEqual([])
+    expect(platesFor(metconKg(), 21.3)).toBeNull()
+  })
+
+  it('every ramp step and % row the plan produces can be drawn', () => {
+    const input = metconKg()
+    for (const { ramp } of RAMP_PRESETS) {
+      for (const s of warmupPlan(140, input, ramp)) expect(platesFor(input, s.weight)).not.toBeNull()
+    }
+    for (const r of percentTable(150, input)) expect(platesFor(input, r.weight)).not.toBeNull()
+  })
+})
+
+describe('warm-up sets are round numbers', () => {
+  it('140 kg ramps through 2.5 kg steps, never 0.5 kg plates', () => {
+    const plan = warmupPlan(140, buildSolveInput({ ...applyBrand(defaultSettings(), 'eleiko'), collars: false }))
+    for (const step of plan.filter((s) => s.key !== 'work' && !s.bareBar)) expect(step.weight % 2.5).toBe(0)
   })
 })

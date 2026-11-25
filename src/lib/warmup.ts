@@ -1,5 +1,5 @@
 import type { Unit } from '../data/plates'
-import { baseWeight, fittingReach, round3, snapToLoadable, toMilli, type SolveInput } from './combinations'
+import { baseWeight, fittingReach, round3, snapToLoadable, solve, toMilli, type ComboPlate, type SolveInput } from './combinations'
 
 export interface WarmupStep {
   key: string
@@ -15,16 +15,36 @@ export interface WarmupStep {
 
 export const DEFAULT_RAMP = [0.4, 0.6, 0.8]
 
+/** Ramps a lifter actually uses: a few big steps, or more small ones for a heavy day. */
+export const RAMP_PRESETS: { label: string; ramp: number[] }[] = [
+  { label: 'Standard', ramp: DEFAULT_RAMP },
+  { label: 'Long', ramp: [0.3, 0.5, 0.65, 0.8, 0.9] },
+  { label: 'Short', ramp: [0.5, 0.8] },
+]
+
+/**
+ * The plates for one side of a weight, the way the app would recommend
+ * loading it — so every warm-up row can show its own stack. null when the
+ * plates can't make it; an empty list is the bare bar.
+ */
+export function platesFor(input: SolveInput, weight: number): ComboPlate[] | null {
+  const r = solve({ ...input, target: weight, limit: 1 }, 'recommended')
+  return r.ok ? (r.combos[0]?.plates ?? []) : null
+}
+
 /** Bar → ramp percentages → work weight, each snapped to a loadable total. */
 export function warmupPlan(work: number, input: SolveInput, percents: number[] = DEFAULT_RAMP): WarmupStep[] {
   const base = baseWeight(input)
   const steps: WarmupStep[] = [
     { key: 'bar', label: 'Bar', pct: 0, ideal: base, weight: round3(base), bareBar: true },
   ]
+  // Warm-ups are round numbers: nobody puts 0.5 kg plates on for a 56 kg set.
+  // Round to the gym's usual step first, then to what the plates can make.
+  const grain = input.unit === 'kg' ? 2.5 : 5
   for (const p of percents) {
     const ideal = round3(work * p)
     if (ideal <= base) continue
-    const weight = snapToLoadable(input, ideal)
+    const weight = snapToLoadable(input, Math.round(ideal / grain) * grain)
     if (steps.some((s) => s.weight === weight)) continue
     steps.push({ key: `p${p}`, label: `${Math.round(p * 100)}%`, pct: p, ideal, weight, bareBar: false })
   }

@@ -3,15 +3,44 @@
 @tailwind utilities;
 
 @layer base {
+  /* Motion — mirrored in src/feel/motion.ts (a test keeps them in step). */
+  :root {
+    --dur-press: 90ms;
+    --dur-quick: 160ms;
+    --dur-base: 240ms;
+    --dur-settle: 420ms;
+    --dur-roll: 460ms;
+    --dur-linger: 2400ms;
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+    --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
+    /* A heavy spring where the browser can draw one; the house curve where it can't. */
+    --ease-seat: var(--ease-out);
+    --stagger-plate: 45ms;
+    --stagger-digit: 45ms;
+  }
+  @supports (transition-timing-function: linear(0, 1)) {
+    :root {
+      --ease-seat: linear(0, 0.039, 0.134, 0.258, 0.393, 0.524, 0.644, 0.748, 0.833, 0.901, 0.952, 0.989, 1.013, 1.028, 1.036, 1.038, 1.037, 1.034, 1.029, 1.024, 1.019, 1.014, 1.01, 1.007, 1);
+    }
+  }
+
   :root {
     /* Light — warm paper / charcoal */
     --bg: 244 242 238;
     --surface: 255 254 252;
     --surface-2: 236 233 227;
     --line: 214 209 200;
+    /* The edge of anything you can press or type in: 3:1 against every surface. */
+    --edge: 132 127 119;
     --ink: 26 26 28;
     --muted: 104 101 96;
-    --accent: 24 24 27;
+    /* Competition yellow. A fill, never text, in the light theme: it fails on paper. */
+    --accent: 255 209 0;
+    --on-accent: 20 20 22;
+    /* Accent as text or a thin mark — dark amber on paper, the yellow itself at night. */
+    --accent-ink: 146 88 0;
+    --focus: 26 26 28;
     --steel: 150 155 162;
     --good: 21 128 61;
     --bad: 185 28 28;
@@ -32,9 +61,13 @@
     --surface: 22 22 24;
     --surface-2: 32 32 35;
     --line: 55 55 60;
+    --edge: 112 111 118;
     --ink: 244 241 235;
     --muted: 150 147 141;
-    --accent: 240 237 231;
+    --accent: 255 209 0;
+    --on-accent: 20 20 22;
+    --accent-ink: 255 209 0;
+    --focus: 255 209 0;
     --steel: 138 144 152;
     --good: 74 222 128;
     --bad: 248 113 113;
@@ -48,7 +81,14 @@
     color-scheme: dark;
   }
 
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+
+  /* Taps answer with their own pressed state, not the browser's grey flash; and
+     hammering + must never double-tap-zoom the page. */
+  :where(button, a, label, select, summary, [role='button']) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   body {
     @apply bg-bg text-ink font-sans antialiased;
@@ -59,9 +99,9 @@
   /* Weights, counts, everything numeric */
   .tnum { font-variant-numeric: tabular-nums lining-nums; }
 
-  :where(button, a, input, select, [tabindex]):focus-visible {
+  :where(button, a, input, select, summary, [tabindex]):focus-visible {
     @apply outline-none ring-2 ring-offset-2;
-    --tw-ring-color: rgb(var(--ink) / 0.85);
+    --tw-ring-color: rgb(var(--focus));
     --tw-ring-offset-color: rgb(var(--bg));
   }
 
@@ -75,9 +115,9 @@
     @apply rounded-2xl border border-line/70 bg-surface;
   }
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line
-           bg-surface px-4 text-sm font-medium text-ink transition
-           hover:bg-surface2 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-edge
+           bg-surface px-4 text-sm font-semibold text-ink transition
+           hover:bg-surface2 active:scale-press-wide disabled:opacity-40 disabled:active:scale-100;
   }
   .btn-primary {
     @apply border-transparent bg-ink text-bg hover:opacity-90;
@@ -89,52 +129,52 @@
     @apply border-transparent bg-transparent hover:bg-surface2;
   }
   .seg {
-    @apply inline-flex rounded-xl border border-line bg-surface p-1;
+    @apply inline-flex rounded-xl border border-edge bg-surface p-1;
   }
   .seg > button {
-    @apply min-h-[38px] rounded-lg px-3 text-sm font-medium text-muted transition;
+    @apply min-h-[44px] rounded-lg px-3 text-sm font-semibold text-muted transition;
   }
   .seg > button[aria-pressed='true'], .seg > button[aria-selected='true'] {
-    @apply bg-surface2 text-ink;
+    @apply bg-ink text-bg;
   }
   .chip {
-    @apply inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line
-           bg-surface px-3.5 text-sm font-medium text-ink transition hover:bg-surface2 active:scale-95;
+    @apply inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-edge
+           bg-surface px-3.5 text-sm font-semibold text-ink transition hover:bg-surface2 active:scale-press;
   }
   /* A chosen chip — ramp presets, lift names, rep maxes — reads as chosen. */
   .chip[aria-pressed='true'] { @apply border-transparent bg-ink text-bg hover:bg-ink; }
   .label { @apply text-xs font-medium uppercase tracking-[0.14em] text-muted; }
 
   /* Quiet section headings: sentence case, no tracking, no icon tiles. */
-  .section-title { @apply text-[15px] font-semibold text-ink; }
+  .section-title { @apply text-lg font-semibold text-ink; }
 
   /* The weight's −/+ — big, round, and the first thing a thumb finds. */
   .step-btn {
-    @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-line bg-surface
-           text-ink transition hover:bg-surface2 active:scale-95 disabled:opacity-30 disabled:active:scale-100;
+    @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-edge bg-surface
+           text-ink transition hover:bg-surface2 active:scale-press disabled:opacity-30 disabled:active:scale-100;
   }
   .jump-btn {
     @apply inline-flex min-h-[44px] items-center justify-center rounded-xl bg-surface2/70 text-sm font-semibold
-           tabular-nums text-ink transition hover:bg-surface2 active:scale-[0.97];
+           tabular-nums text-ink transition hover:bg-surface2 active:scale-press;
   }
   .action-btn {
     @apply flex min-h-[48px] items-center justify-center gap-2 text-sm font-medium text-muted transition
-           hover:bg-surface2/50 hover:text-ink disabled:pointer-events-none disabled:opacity-40;
+           hover:bg-surface2/50 hover:text-ink active:bg-surface2 disabled:pointer-events-none disabled:opacity-40;
   }
   /* On the drawing: small, translucent, out of the way of the plates. */
   .view-btn {
     @apply inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-bg/70 px-2.5 text-xs font-medium
-           text-muted backdrop-blur transition hover:text-ink;
+           text-muted backdrop-blur transition hover:text-ink active:scale-press;
   }
   .view-btn[aria-pressed='true'] { @apply text-ink; }
   /* A plate, as a pill in its own colour. */
   .plate-pill {
-    @apply inline-flex min-w-[48px] items-baseline justify-center gap-1 rounded-lg px-2.5 py-1.5 text-lg font-bold
+    @apply inline-flex min-w-[48px] items-baseline justify-center gap-1 rounded-lg px-2.5 py-1.5 font-cond text-lg font-bold
            tabular-nums;
-    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.18), inset 0 0 0 1px rgb(0 0 0 / 0.08);
+    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.18), inset 0 0 0 1px rgb(var(--ink) / 0.28);
   }
   .sort-select {
-    @apply min-h-[36px] cursor-pointer rounded-lg border border-line bg-surface px-2 text-xs font-medium text-ink;
+    @apply min-h-[44px] cursor-pointer rounded-lg border border-edge bg-surface px-2 text-sm font-medium text-ink;
   }
   /* Five plate colours, stacked like a loaded sleeve. */
   .brand-mark {
@@ -155,27 +195,155 @@
 }
 .platform-grain::after { content: ''; }
 
-/* Gym mode: bigger type, more contrast, less chrome */
-.gym-mode { font-size: 112.5%; --muted: var(--ink); }
-.gym-mode .gym-hide { display: none !important; }
+/* Gym mode: bigger type and stronger secondary text, for reading the bar from
+   a couple of metres away. It hides nothing — every control stays reachable. */
+.gym-mode { font-size: 112.5%; --muted: 70 68 64; }
+.dark.gym-mode { --muted: 208 205 198; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
+    /* A delayed, both-filled animation would otherwise sit at its start (often invisible) for the delay. */
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+  .roll-out { display: none; }
+  /* A caption that fades in and out would jump straight to "out": just show it; it unmounts on its own. */
+  .moment { animation: none !important; }
+  /* The hold-to-erase fill is a progress bar, not decoration: it keeps its pace. */
+  .hold-fill[data-holding='true'] { transition-duration: var(--hold-ms, 1200ms) !important; }
 }
 
-/* Plates sliding onto the sleeve */
+/* ------------------------------------------------------------------ plates */
+
+/* On: in from beyond the sleeve end, seating with a little weight. */
 @keyframes plate-on {
-  from { transform: translateX(var(--slide, 120px)); opacity: 0; }
+  from { transform: translateX(var(--slide, 150px)); opacity: 0; }
+  35% { opacity: 1; }
   to { transform: translateX(0); opacity: 1; }
 }
-.plate-anim { animation: plate-on 340ms cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+.plate-anim { animation: plate-on var(--dur-settle) var(--ease-seat) both; }
+
+/* Off: back out the way it came, quicker than it went on. */
+@keyframes plate-off {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(var(--slide, 150px)); opacity: 0; }
+}
+.plate-out { animation: plate-off var(--dur-base) var(--ease-in) both; pointer-events: none; }
+
+/* Plates already on the bar slide along it when the stack under them changes. */
+.plate-glide { transition: transform var(--dur-base) var(--ease-out); }
 
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.fade-up { animation: fade-up 220ms ease-out both; }
+.fade-up { animation: fade-up var(--dur-base) var(--ease-out) both; }
+
+/* ---------------------------------------------------------- rolling number */
+
+/* Room above and below the glyphs, faded out, so a digit blurs away into the
+   edge instead of being cut off by it. */
+.roll {
+  display: inline-block;
+  padding-block: 0.28em;
+  margin-block: -0.28em;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 0.28em, #000 calc(100% - 0.28em), transparent);
+}
+.roll-digits { display: inline-flex; }
+.roll-slot { position: relative; display: inline-block; }
+.roll-in,
+.roll-out {
+  display: inline-block;
+  animation-duration: var(--dur-roll);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+  will-change: transform, filter, opacity;
+}
+.roll-out { position: absolute; inset: 0; }
+.roll-in.up { animation-name: roll-in-up; }
+.roll-out.up { animation-name: roll-out-up; }
+.roll-in.down { animation-name: roll-in-down; }
+.roll-out.down { animation-name: roll-out-down; }
+
+@keyframes roll-in-up {
+  from { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+  to { transform: none; filter: blur(0); opacity: 1; }
+}
+@keyframes roll-out-up {
+  from { transform: none; filter: blur(0); opacity: 1; }
+  to { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+}
+@keyframes roll-in-down {
+  from { transform: translateY(-75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+  to { transform: none; filter: blur(0); opacity: 1; }
+}
+@keyframes roll-out-down {
+  from { transform: none; filter: blur(0); opacity: 1; }
+  to { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
+}
+
+/* ------------------------------------------------------------------ toasts */
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px); }
+}
+.toast-in { animation: toast-in var(--dur-base) var(--ease-out) both; }
+.toast-out { animation: toast-out var(--dur-quick) var(--ease-in) both; }
+
+/* ------------------------------------------------------- small confirmations */
+
+/* A star filling, a check landing: a quick swell that seats back. */
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.pop { animation: pop var(--dur-settle) var(--ease-seat) both; transform-origin: center; transform-box: fill-box; }
+
+/* A check mark drawing itself. The path sets pathLength="1". */
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.draw { stroke-dasharray: 1; animation: draw var(--dur-base) var(--ease-out) both; }
+
+/* Press-and-hold: a bar filling across the button while you hold. */
+.hold-fill {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-quick) var(--ease-out);
+}
+.hold-fill[data-holding='true'] {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms, 1200ms) linear;
+}
+
+/* ---------------------------------------------------------- celebrations */
+
+/* Chalk dust: a few specks thrown out and settling, like a clap of the hands. */
+@keyframes chalk {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+}
+.chalk { animation: chalk calc(var(--dur-roll) * 2) var(--ease-out) both; }
+
+/* Referee lights coming on, one judge at a time. */
+@keyframes light-on {
+  from { opacity: 0; transform: scale(0.6); box-shadow: 0 0 0 0 rgb(255 255 255 / 0); }
+  to { opacity: 1; transform: none; box-shadow: 0 0 22px 4px rgb(255 255 255 / 0.55); }
+}
+.judge-light { animation: light-on var(--dur-base) var(--ease-seat) both; }
+
+@keyframes moment {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  12% { opacity: 1; transform: none; }
+  82% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.moment { animation: moment var(--dur-linger) var(--ease-out) both; }

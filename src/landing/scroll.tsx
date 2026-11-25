@@ -4,8 +4,8 @@ import { COLLARS, IWF, type PlateDef } from '../data/plates'
 import type { Combo } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, defaultSettings, resolveLoadout } from '../lib/settings'
-import { prefersReducedMotion } from '../hooks/useSettings'
-import { RollingNumber } from './RollingNumber'
+import { prefersReducedMotion, useReducedMotion } from '../feel/motion'
+import { RollingNumber } from '../components/RollingNumber'
 import { clamp, passProgress, pinnedProgress, useScrollFrame } from './useScroll'
 
 /* ------------------------------------------------------------ loading bay */
@@ -48,7 +48,7 @@ export function LoadingBay() {
   const trackRef = useRef<HTMLElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
   const [stage, setStage] = useState(0)
-  const [animate] = useState(() => !prefersReducedMotion())
+  const animate = !useReducedMotion()
 
   useScrollFrame(() => {
     const el = trackRef.current
@@ -80,7 +80,7 @@ export function LoadingBay() {
                 value={total}
                 className="font-cond text-[72px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[104px]"
               />
-              <span className="font-cond text-2xl font-semibold uppercase text-white/50">kg</span>
+              <span className="font-cond text-[1.5rem] leading-[2rem] font-semibold uppercase text-white/50">kg</span>
             </div>
           </div>
 
@@ -97,7 +97,7 @@ export function LoadingBay() {
             />
           </div>
 
-          <div className="mt-4 flex min-h-[28px] items-center justify-center gap-2 font-cond text-lg font-semibold uppercase tracking-[0.16em] text-white/70">
+          <div className="mt-4 flex min-h-[28px] items-center justify-center gap-2 font-cond text-[1.125rem] leading-[1.75rem] font-semibold uppercase tracking-[0.16em] text-white/70">
             {added ? (
               <span key={stage} className="bay-added">
                 <span className="bay-swatch" style={{ background: added.color }} />+ {fmt(added.weight)} kg a side
@@ -151,21 +151,25 @@ export function RollingPlate({
   className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const face = useRef<SVGSVGElement>(null)
 
+  // The wrapper travels and carries the shadow; only the face turns. Rotating
+  // the element with the drop-shadow made the shadow orbit the plate.
   useScrollFrame(() => {
     const el = ref.current
     const host = el?.parentElement
-    if (!el || !host || prefersReducedMotion()) return
+    if (!el || !host || !face.current || prefersReducedMotion()) return
     const p = passProgress(host)
     const travel = Math.min(window.innerWidth, 1200) * 0.9
     const x = (p - 0.5) * travel * direction
     const turns = x / (size / 2) // radians rolled = distance / radius
-    el.style.transform = `translate3d(${x}px, 0, 0) rotate(${turns}rad)`
+    el.style.transform = `translate3d(${x}px, 0, 0)`
+    face.current.style.transform = `rotate(${turns}rad)`
   })
 
   return (
     <div ref={ref} className={`rolling-plate ${className}`} style={{ width: size, height: size }} aria-hidden="true">
-      <svg viewBox="-100 -100 200 200" width="100%" height="100%">
+      <svg ref={face} viewBox="-100 -100 200 200" width="100%" height="100%">
         <defs>
           <radialGradient id={`face-${weight}`} cx="0.38" cy="0.32" r="0.8">
             <stop offset="0" stopColor="#fff" stopOpacity="0.18" />

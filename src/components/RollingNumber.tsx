@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
+import { stagger } from '../feel/motion'
 import { fmt } from '../lib/format'
 
 /**
@@ -6,7 +7,7 @@ import { fmt } from '../lib/format'
  * move, blurred while they travel. Going up, the old digit leaves upward and
  * the new one rises in from below; going down, the reverse.
  */
-export function RollingNumber({ value, className = '' }: { value: number; className?: string }) {
+export function RollingNumber({ value, className = '', style }: { value: number; className?: string; style?: CSSProperties }) {
   // The previous value and the direction, derived during render — each change
   // gets a new generation so its digits remount and the animation restarts,
   // even mid-roll when the scroll is quick.
@@ -22,7 +23,7 @@ export function RollingNumber({ value, className = '' }: { value: number; classN
   const way = roll.dir > 0 ? 'up' : 'down'
 
   return (
-    <span className={`roll ${className}`}>
+    <span className={`roll ${className}`} style={style}>
       <span className="sr-only">{next}</span>
       <span aria-hidden="true" className="roll-digits">
         {Array.from(a, (digit, i) => {
@@ -35,7 +36,7 @@ export function RollingNumber({ value, className = '' }: { value: number; classN
             )
           }
           // The ones digit moves first and the rest follow, like an odometer.
-          const delay = { animationDelay: `${(len - 1 - i) * 45}ms` }
+          const delay = { animationDelay: `${(len - 1 - i) * stagger.digit}ms` }
           return (
             <span key={`r${i}-${roll.gen}`} className="roll-slot">
               {digit !== ' ' && (
