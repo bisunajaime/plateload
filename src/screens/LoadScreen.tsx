@@ -1,13 +1,18 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../app/context'
-import { LoadCard } from '../components/LoadCard'
+import { Scoreboard } from '../components/load/Scoreboard'
+import { feedback } from '../feel'
+import { smallestIncrement } from '../lib/combinations'
 import { MiniBar } from '../components/MiniBar'
 import { SaveFavoriteSheet } from '../components/SaveFavoriteSheet'
 import { OtherWays } from './OtherWays'
 import { SavedStrip } from './SavedStrip'
 import { useHasScrolled, useVisibility } from '../hooks/useOnScreen'
 
-/** The load: the answer, the controls to change it, and the other ways to make it. */
+/**
+ * The load: the answer and the controls to change it, then — on a phone — the
+ * saved weights and the other ways to make it. Pinned on a desktop, just the card.
+ */
 export function LoadScreen({ pinned = false }: { pinned?: boolean }) {
   const app = useApp()
   const { settings, update, loadout, result, selected } = app
@@ -22,11 +27,10 @@ export function LoadScreen({ pinned = false }: { pinned?: boolean }) {
   const list = useVisibility(listRef, 72, 1, 160)
   const scrolled = useHasScrolled()
   const showPreview = !pinned && !hero.onScreen && !list.onScreen && (scrolled || hero.passed)
-  const quickSteps = settings.unit === 'kg' ? [2.5, 5, 10, 20] : [5, 10, 25, 45]
 
   return (
     <div className="flex flex-col gap-6">
-      <LoadCard
+      <Scoreboard
         ref={heroRef}
         target={settings.target}
         unit={settings.unit}
@@ -39,24 +43,28 @@ export function LoadScreen({ pinned = false }: { pinned?: boolean }) {
         collarKind={app.collarKind}
         collarWidthMm={app.collarWidth}
         base={loadout.base}
+        step={smallestIncrement(app.input.denoms, settings.unit)}
         showLabels={settings.showLabels}
         closeUp={settings.closeUp}
         animate={app.animate}
         down={app.jumps.down}
         up={app.jumps.up}
-        quickSteps={quickSteps}
+        jumps={settings.unit === 'kg' ? [2.5, 5, 10] : [5, 10, 25]}
         onStep={app.setTarget}
         onJump={app.jump}
         onEnter={app.pick}
         onToggleCloseUp={() => update({ closeUp: !settings.closeUp })}
         moment={app.moment}
-        onSave={() => setSaving(true)}
         saved={app.isSaved}
-        onCopy={app.share}
-        copied={false}
-        changeOff={!settings.includeChange}
-        onEnableChange={() => update({ includeChange: true })}
-        onOpenSetup={() => app.go('gym')}
+        onSave={() => setSaving(true)}
+        onShare={app.share}
+        smallPlatesOff={!settings.includeChange}
+        onUseSmallPlates={() => {
+          app.applyUndoable('Small plates are back on.', { includeChange: true })
+          feedback('confirm')
+        }}
+        onEditPlates={() => app.go('gym')}
+        compact={pinned}
       />
       {!pinned && (
         <>

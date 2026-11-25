@@ -4,7 +4,8 @@ export interface FieldControlProps {
   id: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean
-  /** Report that the input was changed or refused, with a sentence saying how. */
+  /** Report that the input was changed or refused, with a sentence saying how.
+   *  Not a DOM attribute: take it out before spreading the rest onto an <input>. */
   onAdjust: (message: string) => void
 }
 

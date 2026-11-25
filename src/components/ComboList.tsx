@@ -1,25 +1,26 @@
-import { useState } from 'react'
-import type { CollarKind, PlateDef } from '../data/plates'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import type { PlateDef, Unit } from '../data/plates'
 import type { Combo, RankMode } from '../lib/combinations'
 import { ComboCard } from './ComboCard'
+import { Choice } from './kit/Choice'
+import { Section } from './kit/Section'
+import { ChevronDownIcon } from './kit/icons'
+import { RANKINGS, recommendedWhy, wayReason } from './ways/reasons'
 
-const MODES: { value: RankMode; label: string; title: string }[] = [
-  { value: 'recommended', label: 'Recommended', title: 'Fewest plates, loaded competition style' },
-  { value: 'competition', label: 'Competition', title: 'Largest plates innermost, IWF order' },
-  { value: 'fewest', label: 'Fewest', title: 'Fewest plates per side' },
-  { value: 'compact', label: 'Compact', title: 'Shortest stack on the sleeve' },
-]
+/** Enough to see there's a choice; the rest on request. */
+const FIRST = 3
 
-// Four at a time: enough to choose from, short enough to scan on a phone.
-const PAGE = 4
-
+/**
+ * Every way to make the weight, best first. Three to start with and the rest
+ * behind "Show all", where you can also change how they're ranked. Picking
+ * one puts it on the bar. A radio group: arrows move, one Tab stop.
+ */
 export function ComboList({
   combos,
   mode,
   onMode,
   plates,
-  collarKind,
-  collarWidthMm,
+  unit,
   sleeveMm,
   selectedId,
   onSelect,
@@ -30,86 +31,104 @@ export function ComboList({
   mode: RankMode
   onMode: (m: RankMode) => void
   plates: PlateDef[]
-  collarKind: CollarKind | null
-  collarWidthMm: number
+  unit: Unit
   sleeveMm: number
   selectedId: string | null
   onSelect: (c: Combo) => void
   truncated: boolean
   totalFound: number
 }) {
-  const [shown, setShown] = useState(PAGE)
-  // Reset paging when the result set changes — derived during render, no effect.
-  const listKey = `${mode}:${combos.length}:${combos[0]?.id ?? ''}`
-  const [prevKey, setPrevKey] = useState(listKey)
-  if (listKey !== prevKey) {
-    setPrevKey(listKey)
-    setShown(PAGE)
+  const [open, setOpen] = useState(false)
+  const byId = useMemo(() => new Map(plates.map((p) => [p.id, p])), [plates])
+  const refs = useRef(new Map<string, HTMLButtonElement | null>())
+
+  // Collapsed, the list still shows whichever way is on the bar, even if it
+  // was picked from further down.
+  const top = combos.slice(0, FIRST)
+  const selected = combos.find((c) => c.id === selectedId)
+  const shown = open ? combos : selected && !top.includes(selected) ? [...top, selected] : top
+  const current = selected ?? combos[0]
+  const ranking = RANKINGS.find((r) => r.value === mode) ?? RANKINGS[0]
+
+  const onKey = (e: KeyboardEvent) => {
+    const move = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]
+    if (!move) return
+    e.preventDefault()
+    const i = shown.findIndex((c) => c.id === current?.id)
+    const next = shown[(i + move + shown.length) % shown.length]
+    onSelect(next)
+    refs.current.get(next.id)?.focus()
   }
 
-  const active = MODES.find((m) => m.value === mode)
-  // One way to load it is already the bar above — a list of one is noise.
-  if (totalFound <= 1) return null
-
   return (
-    <section aria-labelledby="ways-heading">
-      <div className="mb-2 flex items-end justify-between gap-3 px-1">
-        <div className="min-w-0">
-          <h2 id="ways-heading" className="section-title">
-            {totalFound} ways to load it
-          </h2>
-          {active && <p className="truncate text-xs text-muted">{active.title}</p>}
-        </div>
-        <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted">
-          <span>Sort</span>
-          <select
-            className="sort-select"
+    <Section
+      title="Other ways to load it"
+      action={
+        <span className="font-cond text-base font-semibold tabular-nums text-muted">
+          {totalFound} way{totalFound === 1 ? '' : 's'}
+        </span>
+      }
+    >
+      {open && (
+        <div className="mb-3 flex flex-col gap-2">
+          <Choice
+            label="Rank by"
             value={mode}
-            onChange={(e) => onMode(e.target.value as RankMode)}
-            aria-label="Sort combinations"
-          >
-            {MODES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={onMode}
+            options={RANKINGS.map((r) => ({
+              value: r.value,
+              // Short on a phone, full where there's room; the meaning is always spelled out below.
+              label: (
+                <>
+                  <span className="sm:hidden">{r.short}</span>
+                  <span className="hidden sm:inline">{r.name}</span>
+                </>
+              ),
+            }))}
+          />
+          <p className="text-sm text-muted">
+            <span className="font-semibold text-ink">{ranking.name}:</span> {ranking.meaning}
+          </p>
+        </div>
+      )}
+
+      <div role="radiogroup" aria-label="Ways to load it" onKeyDown={onKey} className="card divide-y divide-line overflow-hidden">
+        {shown.map((c, i) => (
+          <ComboCard
+            key={c.id}
+            ref={(el) => {
+              refs.current.set(c.id, el)
+            }}
+            combo={c}
+            byId={byId}
+            unit={unit}
+            reason={wayReason(c, combos, sleeveMm)}
+            why={i === 0 && mode === 'recommended' ? recommendedWhy(c, combos) : undefined}
+            selected={c.id === current?.id}
+            focusable={c.id === current?.id}
+            onSelect={() => onSelect(c)}
+          />
+        ))}
       </div>
 
-      <ul className="card divide-y divide-line overflow-hidden">
-        {combos.slice(0, shown).map((c) => (
-          <li key={c.id}>
-            <ComboCard
-              combo={c}
-              plates={plates}
-              collarKind={collarKind}
-              collarWidthMm={collarWidthMm}
-              sleeveMm={sleeveMm}
-              selected={c.id === selectedId}
-              onSelect={() => onSelect(c)}
-            />
-          </li>
-        ))}
-        {combos.length > shown && (
-          <li>
-            <button
-              type="button"
-              className="flex min-h-[44px] w-full items-center justify-center text-sm font-medium text-muted transition hover:bg-surface2/40 hover:text-ink"
-              onClick={() => setShown((s) => s + PAGE)}
-            >
-              Show {Math.min(PAGE, combos.length - shown)} more
-            </button>
-          </li>
-        )}
-      </ul>
-      {truncated && combos.length <= shown && (
-        <p className="mt-2 px-1 text-xs text-muted">
-          Showing the best {combos.length}. Another sort brings up different ones.
+      {combos.length > FIRST && (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl text-sm font-semibold text-ink transition hover:bg-surface2"
+        >
+          {open ? 'Show fewer' : `Show all ${combos.length}`}
+          <span className={`transition-transform duration-base ${open ? 'rotate-180' : ''}`}>
+            <ChevronDownIcon />
+          </span>
+        </button>
+      )}
+      {open && truncated && (
+        <p className="mt-1 text-sm text-muted">
+          Showing the best {combos.length} of {totalFound}. Ranking another way brings up different ones.
         </p>
       )}
-    </section>
+    </Section>
   )
 }
-
-export { MODES }

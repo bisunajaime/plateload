@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { duration, ease, feedback, useReducedMotion } from '../feel'
+import { createPortal } from 'react-dom'
 import { XIcon } from './kit/icons'
 
 /* -------------------------------------------------------------- segmented */
@@ -295,7 +296,9 @@ export function Sheet({
 
   if (phase === 'closed') return null
   const closing = phase === 'closing'
-  return (
+  // Into <body>, not where it was rendered: a screen's entrance animation gives
+  // its subtree a transform, which would make `fixed` mean "fixed to the screen".
+  return createPortal(
     <div className={`fixed inset-0 z-50 flex items-end justify-center sm:items-center ${closing ? 'pointer-events-none' : ''}`}>
       <div ref={scrim} className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
@@ -330,7 +333,8 @@ export function Sheet({
         </div>
         {shown.footer && <footer className="border-t border-line px-5 py-3">{shown.footer}</footer>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

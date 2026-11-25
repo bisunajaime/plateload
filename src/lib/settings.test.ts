@@ -207,3 +207,11 @@ describe('warm-up choices are remembered, and checked', () => {
     expect(hydrate({ warmup: { tool: 'x', ramp: [2], oneRm: -1, step: 7 } }).warmup).toEqual(defaultSettings().warmup)
   })
 })
+
+describe('the welcome', () => {
+  it('shows on a first visit only', () => {
+    expect(defaultSettings().intro).toBe(true)
+    expect(hydrate({ target: 225 }).intro).toBe(false)
+    expect(hydrate({ intro: true }).intro).toBe(true)
+  })
+})

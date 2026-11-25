@@ -1,6 +1,6 @@
 /* Class recipes for kit looks that some controls need without the component. */
 
-export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger'
+export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-ink text-bg hover:bg-ink/90',
@@ -9,6 +9,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: 'border border-edge bg-surface text-ink hover:bg-surface2',
   ghost: 'text-ink hover:bg-surface2',
   danger: 'bg-bad text-white hover:bg-bad/90',
+  // Destructive but undoable — a delete with Undo behind it: red words, no red slab.
+  'danger-ghost': 'text-bad hover:bg-bad/10',
 }
 
 /** Button classes, for the rare control that has to be something other than a <button>. */

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { BarDef, CollarKind, PlateDef, Unit } from '../data/plates'
 import { duration, ease, feedback, useReducedMotion } from '../feel'
 import type { Combo } from '../lib/combinations'
@@ -199,7 +200,8 @@ export function MiniBar({
     onMove({ side, y: y / window.innerHeight })
   }
 
-  return (
+  // Portalled for the same reason as sheets: a transformed ancestor would capture `fixed`.
+  return createPortal(
     <button
       ref={ref}
       type="button"
@@ -218,7 +220,7 @@ export function MiniBar({
       }}
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
-      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Drag to move, or activate to jump to the barbell.`}
+      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Activate to go back to the barbell.`}
       style={{ left: 0, top: 0 }}
       className={`fixed z-40 w-[150px] cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-line bg-surface/95 opacity-0 shadow-xl backdrop-blur will-change-transform sm:w-[200px] ${
         visible ? '' : 'pointer-events-none'
@@ -250,6 +252,7 @@ export function MiniBar({
           {!loadable ? <span className="text-bad">can’t load</span> : combo?.plates.length ? `${fmt(combo.perSide)}/side` : 'bar only'}
         </span>
       </div>
-    </button>
+    </button>,
+    document.body,
   )
 }

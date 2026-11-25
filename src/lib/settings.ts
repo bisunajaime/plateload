@@ -50,6 +50,8 @@ export interface WarmupPrefs {
 }
 
 export interface Settings {
+  /** First visit: show the welcome that says the plates are assumed until you set yours. */
+  intro: boolean
   tab: AppTab
   warmup: WarmupPrefs
   theme: 'light' | 'dark' | 'system'
@@ -96,6 +98,7 @@ export function defaultSettings(): Settings {
   const brand: Brand = 'metcon'
   const unit: Unit = 'lb'
   return {
+    intro: true,
     tab: 'load',
     warmup: { tool: 'ramp', ramp: [0.4, 0.6, 0.8], oneRm: null, step: 5 },
     theme: 'system',
@@ -149,6 +152,8 @@ export function hydrate(raw: unknown): Settings {
     unit,
     theme: oneOf(s.theme, THEMES, base.theme),
     tab: oneOf(s.tab, APP_TABS, base.tab),
+    // Anyone with stored settings has used the app before: no welcome.
+    intro: s.intro === true,
     warmup: hydrateWarmup(s.warmup, base.warmup),
     plateStyle: oneOf(s.plateStyle, PLATE_STYLES, base.plateStyle),
     collarKind: s.collarKind && s.collarKind in COLLARS ? s.collarKind : defaultCollarKind(brand),
@@ -185,7 +190,7 @@ export function hydrate(raw: unknown): Settings {
 function hydrateWarmup(raw: unknown, base: WarmupPrefs): WarmupPrefs {
   if (!raw || typeof raw !== 'object') return base
   const w = raw as Partial<WarmupPrefs>
-  const ramp = Array.isArray(w.ramp) && w.ramp.every((p) => typeof p === 'number' && p > 0 && p < 1) ? [...w.ramp].sort() : base.ramp
+  const ramp = Array.isArray(w.ramp) && w.ramp.every((p) => typeof p === 'number' && p > 0 && p < 1) ? [...w.ramp].sort((a, b) => a - b) : base.ramp
   return {
     tool: oneOf(w.tool, ['ramp', 'percent'] as const, base.tool),
     ramp,

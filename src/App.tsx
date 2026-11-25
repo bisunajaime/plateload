@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppContext } from './app/context'
 import { useAppModel } from './app/useAppModel'
 import { Header } from './components/Header'
 import { Choice } from './components/kit/Choice'
 import { BrandSheet } from './components/shell/BrandSheet'
 import { TabBar } from './components/shell/TabBar'
+import { Welcome } from './components/shell/Welcome'
 import { Toaster } from './components/Toast'
 import { DESKTOP, useMedia } from './hooks/useMedia'
 import type { AppTab } from './lib/settings'
@@ -49,6 +50,19 @@ export default function App() {
   const paneTab: AppTab = tab === 'load' ? 'warmup' : tab
   const phoneTab: AppTab = tab === 'ways' ? 'load' : tab
 
+  // The app works offline; say so when it matters, so nobody wonders.
+  const { showToast } = app
+  useEffect(() => {
+    const ready = () => showToast({ message: 'Saved for offline — PlateLoad now works without signal.' })
+    const offline = () => showToast({ message: 'You’re offline. Everything still works.' })
+    window.addEventListener('plateload:offline-ready', ready)
+    window.addEventListener('offline', offline)
+    return () => {
+      window.removeEventListener('plateload:offline-ready', ready)
+      window.removeEventListener('offline', offline)
+    }
+  }, [showToast])
+
   return (
     <AppContext.Provider value={app}>
       <div className="min-h-dvh pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0">
@@ -56,6 +70,7 @@ export default function App() {
 
         <main id="main" className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
           <h1 className="sr-only">PlateLoad</h1>
+          {(desktop || phoneTab === 'load') && <Welcome />}
           {desktop ? (
             <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] items-start gap-8">
               <div className="sticky top-[76px]">

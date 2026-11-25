@@ -2,32 +2,36 @@ import { useState } from 'react'
 import type { Unit } from '../data/plates'
 import { fmt } from '../lib/format'
 import type { Favorite } from '../lib/settings'
+import { Button } from './kit/Button'
+import { Chip } from './kit/Chip'
+import { inputClass } from './kit/styles'
 import { Sheet } from './ui'
 
-/** The lifts a barbell gym actually saves, most common first. */
+/** The lifts a gym actually saves, most common first — general gym and CrossFit, then the Olympic lifts. */
 const LIFTS = [
+  'Squat',
+  'Deadlift',
+  'Bench Press',
+  'Strict Press',
+  'Clean',
   'Snatch',
   'Clean & Jerk',
-  'Clean',
-  'Jerk',
-  'Back Squat',
   'Front Squat',
-  'Deadlift',
-  'Power Snatch',
-  'Power Clean',
-  'Hang Clean & Jerk',
+  'Back Squat',
+  'Thruster',
   // Behind "More lifts" — useful, but a first look shouldn't be a wall of chips.
-  'Hang Snatch',
-  'Hang Clean',
+  'Push Press',
+  'Jerk',
   'Push Jerk',
   'Split Jerk',
+  'Power Clean',
+  'Power Snatch',
+  'Hang Clean',
+  'Hang Snatch',
+  'Hang Clean & Jerk',
   'Overhead Squat',
-  'Snatch Pull',
   'Clean Pull',
-  'Push Press',
-  'Strict Press',
-  'Bench Press',
-  'Thruster',
+  'Snatch Pull',
 ]
 const SHOWN = 10
 
@@ -104,17 +108,16 @@ export function SaveFavoriteSheet({
       open={open}
       onClose={onClose}
       title={`Save ${fmt(target)} ${unit}`}
-      focusField={false}
       footer={
         <div className="flex justify-end gap-2">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
           {/* Submits the form below, so the button, Enter and a phone keyboard's
               Go key all take the same path and the sheet closes on the first tap. */}
-          <button type="submit" form="save-favourite" className="btn btn-primary px-5" disabled={duplicate}>
+          <Button type="submit" form="save-favourite" variant="primary" disabled={duplicate} aria-describedby="favourite-status">
             Save
-          </button>
+          </Button>
         </div>
       }
     >
@@ -127,20 +130,21 @@ export function SaveFavoriteSheet({
           </label>
           <input
             id="favourite-name"
-            className="btn w-full justify-start px-4"
-            placeholder="Pick a lift below, or type one"
+            className={inputClass}
+            placeholder="Type a name, or pick a lift below"
             enterKeyHint="done"
             autoComplete="off"
             value={label}
+            aria-invalid={duplicate || undefined}
+            aria-describedby="favourite-status"
             onChange={(e) => setLabel(e.target.value)}
           />
-          {duplicate ? (
-            <span className="text-xs font-medium text-bad" role="status">
-              Already saved{name ? ` as “${name}”` : ' without a name'} at {fmt(target)} {unit}.
-            </span>
-          ) : (
-            <span className="text-xs text-muted">Two lifts can share a weight — the name tells them apart.</span>
-          )}
+          {/* Mounted from the start, so the duplicate message is announced when it appears. */}
+          <span id="favourite-status" role="status" className={`text-sm ${duplicate ? 'font-medium text-bad' : 'text-muted'}`}>
+            {duplicate
+              ? `Already saved${name ? ` as “${name}”` : ' without a name'} at ${fmt(target)} ${unit} — change the name to save it again.`
+              : 'Two lifts can share a weight — the name tells them apart.'}
+          </span>
         </div>
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-ink">
@@ -148,15 +152,9 @@ export function SaveFavoriteSheet({
           </legend>
           <div className="flex flex-wrap gap-2">
             {REP_MAXES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                className="chip tabular-nums"
-                aria-pressed={pickedRm === r}
-                onClick={() => choose(pickedRm === r ? null : r, pickedLift)}
-              >
+              <Chip key={r} selected={pickedRm === r} onClick={() => choose(pickedRm === r ? null : r, pickedLift)}>
                 {r}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>
@@ -165,20 +163,22 @@ export function SaveFavoriteSheet({
           <legend className="mb-2 text-sm font-medium text-ink">Lift</legend>
           <div className="flex flex-wrap gap-2">
             {visible.map((l) => (
-              <button
-                key={l}
-                type="button"
-                className="chip"
-                aria-pressed={pickedLift === l}
-                onClick={() => choose(pickedRm, pickedLift === l ? null : l)}
-              >
+              <Chip key={l} selected={pickedLift === l} onClick={() => choose(pickedRm, pickedLift === l ? null : l)}>
                 {l}
-              </button>
+              </Chip>
             ))}
             {!more && LIFTS.length > SHOWN && (
-              <button type="button" className="chip border-dashed text-muted" onClick={() => setMore(true)}>
+              <Chip
+                quiet
+                onClick={(e) => {
+                  // The button is about to disappear; land on the first newly shown lift instead of <body>.
+                  const list = e.currentTarget.parentElement
+                  setMore(true)
+                  requestAnimationFrame(() => list?.querySelectorAll<HTMLButtonElement>('button')[SHOWN]?.focus())
+                }}
+              >
                 More lifts
-              </button>
+              </Chip>
             )}
           </div>
         </fieldset>

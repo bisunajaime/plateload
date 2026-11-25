@@ -1,7 +1,7 @@
 import type { Settings } from '../lib/settings'
-import { Segmented } from './ui'
-import { MoonIcon, SunIcon, SystemIcon } from './kit/icons'
+import { Choice } from './kit/Choice'
 
+/** Light, dark, or whatever the phone is doing — in words, not just icons. */
 export function ThemeToggle({
   theme,
   onChange,
@@ -10,14 +10,14 @@ export function ThemeToggle({
   onChange: (t: Settings['theme']) => void
 }) {
   return (
-    <Segmented
+    <Choice
       value={theme}
       onChange={onChange}
       label="Theme"
       options={[
-        { value: 'light', label: <SunIcon />, title: 'Light' },
-        { value: 'dark', label: <MoonIcon />, title: 'Dark' },
-        { value: 'system', label: <SystemIcon />, title: 'Match system' },
+        { value: 'light', label: 'Light' },
+        { value: 'dark', label: 'Dark' },
+        { value: 'system', label: 'Auto', title: 'Follow the phone’s light or dark setting' },
       ]}
     />
   )
