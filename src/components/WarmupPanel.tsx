@@ -4,7 +4,8 @@ import type { SolveInput } from '../lib/combinations'
 import { convert, fmt } from '../lib/format'
 import { DEFAULT_RAMP, percentTable, warmupPlan } from '../lib/warmup'
 import { NumberField } from './NumberField'
-import { ChevronIcon, Segmented } from './ui'
+import { Segmented } from './ui'
+import { ChevronIcon } from './kit/icons'
 
 type Tab = 'warmup' | 'percent' | 'convert'
 

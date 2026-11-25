@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import type { Brand } from '../data/plates'
 import type { Settings } from '../lib/settings'
-import { GearIcon, Segmented } from './ui'
+import { Segmented } from './ui'
+import { GearIcon } from './kit/icons'
 
 /**
  * Three things: where you are, which plates you are loading, and setup. The

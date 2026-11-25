@@ -13,6 +13,7 @@ export function NumberField({
   min = 0,
   max,
   integer = false,
+  onAdjust,
   ...rest
 }: {
   value: number | null
@@ -20,6 +21,8 @@ export function NumberField({
   min?: number
   max?: number
   integer?: boolean
+  /** Told, in a sentence, whenever what was typed is refused or corrected. */
+  onAdjust?: (message: string) => void
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'min' | 'max' | 'type'>) {
   const [draft, setDraft] = useState<string | null>(null)
 
@@ -28,10 +31,17 @@ export function NumberField({
     const raw = draft.trim()
     setDraft(null)
     if (raw === '') return onCommit(null)
-    let n = Number(raw)
-    if (!Number.isFinite(n)) return
-    if (integer) n = Math.round(n)
-    n = Math.max(min, max != null ? Math.min(max, n) : n)
+    const typed = Number(raw)
+    if (!Number.isFinite(typed)) return onAdjust?.(`“${raw}” isn’t a number — kept ${value == null ? 'the default' : fmt(value)}.`)
+    let n = integer ? Math.round(typed) : typed
+    if (n !== typed) onAdjust?.(`Whole numbers only — rounded to ${fmt(n)}.`)
+    if (n < min) {
+      n = min
+      onAdjust?.(`Can’t go below ${fmt(min)}.`)
+    } else if (max != null && n > max) {
+      n = max
+      onAdjust?.(`Capped at ${fmt(max)}.`)
+    }
     onCommit(n)
   }
 

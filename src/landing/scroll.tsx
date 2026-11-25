@@ -80,7 +80,7 @@ export function LoadingBay() {
                 value={total}
                 className="font-cond text-[72px] font-extrabold leading-[0.85] tabular-nums text-white sm:text-[104px]"
               />
-              <span className="font-cond text-2xl font-semibold uppercase text-white/50">kg</span>
+              <span className="font-cond text-[1.5rem] leading-[2rem] font-semibold uppercase text-white/50">kg</span>
             </div>
           </div>
 
@@ -97,7 +97,7 @@ export function LoadingBay() {
             />
           </div>
 
-          <div className="mt-4 flex min-h-[28px] items-center justify-center gap-2 font-cond text-lg font-semibold uppercase tracking-[0.16em] text-white/70">
+          <div className="mt-4 flex min-h-[28px] items-center justify-center gap-2 font-cond text-[1.125rem] leading-[1.75rem] font-semibold uppercase tracking-[0.16em] text-white/70">
             {added ? (
               <span key={stage} className="bay-added">
                 <span className="bay-swatch" style={{ background: added.color }} />+ {fmt(added.weight)} kg a side

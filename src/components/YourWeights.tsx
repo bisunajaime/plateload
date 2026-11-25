@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Unit } from '../data/plates'
 import { fmt } from '../lib/format'
 import type { Favorite, RecentWeight } from '../lib/settings'
-import { XIcon } from './ui'
+import { XIcon } from './kit/icons'
 
 const brandOf = (u: Unit) => (u === 'lb' ? 'Metcon' : 'Eleiko')
 

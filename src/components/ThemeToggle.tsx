@@ -1,5 +1,6 @@
 import type { Settings } from '../lib/settings'
-import { MoonIcon, Segmented, SunIcon, SystemIcon } from './ui'
+import { Segmented } from './ui'
+import { MoonIcon, SunIcon, SystemIcon } from './kit/icons'
 
 export function ThemeToggle({
   theme,

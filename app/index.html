@@ -17,14 +17,15 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- The same stylesheet URL as the landing page, so it is already cached. -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Unbounded:wght@600;700;800&display=swap"
       media="print"
       onload="this.media='all'"
     />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Unbounded:wght@600;700;800&display=swap" />
     </noscript>
     <script>
       // Paint the right theme before React boots so there is no flash.
@@ -33,6 +34,8 @@
         var dark = s.theme === 'dark' || ((!s.theme || s.theme === 'system') && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.classList.toggle('dark', dark)
         if (s.gymMode) document.documentElement.classList.add('gym-mode')
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', dark ? '#0c0c0d' : '#f4f2ee')
       } catch (e) {}
     </script>
   </head>

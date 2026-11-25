@@ -31,9 +31,16 @@
     --surface: 255 254 252;
     --surface-2: 236 233 227;
     --line: 214 209 200;
+    /* The edge of anything you can press or type in: 3:1 against every surface. */
+    --edge: 132 127 119;
     --ink: 26 26 28;
     --muted: 104 101 96;
-    --accent: 24 24 27;
+    /* Competition yellow. A fill, never text, in the light theme: it fails on paper. */
+    --accent: 255 209 0;
+    --on-accent: 20 20 22;
+    /* Accent as text or a thin mark — dark amber on paper, the yellow itself at night. */
+    --accent-ink: 146 88 0;
+    --focus: 26 26 28;
     --steel: 150 155 162;
     --good: 21 128 61;
     --bad: 185 28 28;
@@ -54,9 +61,13 @@
     --surface: 22 22 24;
     --surface-2: 32 32 35;
     --line: 55 55 60;
+    --edge: 112 111 118;
     --ink: 244 241 235;
     --muted: 150 147 141;
-    --accent: 240 237 231;
+    --accent: 255 209 0;
+    --on-accent: 20 20 22;
+    --accent-ink: 255 209 0;
+    --focus: 255 209 0;
     --steel: 138 144 152;
     --good: 74 222 128;
     --bad: 248 113 113;
@@ -88,9 +99,9 @@
   /* Weights, counts, everything numeric */
   .tnum { font-variant-numeric: tabular-nums lining-nums; }
 
-  :where(button, a, input, select, [tabindex]):focus-visible {
+  :where(button, a, input, select, summary, [tabindex]):focus-visible {
     @apply outline-none ring-2 ring-offset-2;
-    --tw-ring-color: rgb(var(--ink) / 0.85);
+    --tw-ring-color: rgb(var(--focus));
     --tw-ring-offset-color: rgb(var(--bg));
   }
 
@@ -104,8 +115,8 @@
     @apply rounded-2xl border border-line/70 bg-surface;
   }
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line
-           bg-surface px-4 text-sm font-medium text-ink transition
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-edge
+           bg-surface px-4 text-sm font-semibold text-ink transition
            hover:bg-surface2 active:scale-press-wide disabled:opacity-40 disabled:active:scale-100;
   }
   .btn-primary {
@@ -118,28 +129,28 @@
     @apply border-transparent bg-transparent hover:bg-surface2;
   }
   .seg {
-    @apply inline-flex rounded-xl border border-line bg-surface p-1;
+    @apply inline-flex rounded-xl border border-edge bg-surface p-1;
   }
   .seg > button {
-    @apply min-h-[38px] rounded-lg px-3 text-sm font-medium text-muted transition;
+    @apply min-h-[44px] rounded-lg px-3 text-sm font-semibold text-muted transition;
   }
   .seg > button[aria-pressed='true'], .seg > button[aria-selected='true'] {
-    @apply bg-surface2 text-ink;
+    @apply bg-ink text-bg;
   }
   .chip {
-    @apply inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line
-           bg-surface px-3.5 text-sm font-medium text-ink transition hover:bg-surface2 active:scale-press;
+    @apply inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-edge
+           bg-surface px-3.5 text-sm font-semibold text-ink transition hover:bg-surface2 active:scale-press;
   }
   /* A chosen chip — ramp presets, lift names, rep maxes — reads as chosen. */
   .chip[aria-pressed='true'] { @apply border-transparent bg-ink text-bg hover:bg-ink; }
   .label { @apply text-xs font-medium uppercase tracking-[0.14em] text-muted; }
 
   /* Quiet section headings: sentence case, no tracking, no icon tiles. */
-  .section-title { @apply text-[15px] font-semibold text-ink; }
+  .section-title { @apply text-lg font-semibold text-ink; }
 
   /* The weight's −/+ — big, round, and the first thing a thumb finds. */
   .step-btn {
-    @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-line bg-surface
+    @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-edge bg-surface
            text-ink transition hover:bg-surface2 active:scale-press disabled:opacity-30 disabled:active:scale-100;
   }
   .jump-btn {
@@ -158,12 +169,12 @@
   .view-btn[aria-pressed='true'] { @apply text-ink; }
   /* A plate, as a pill in its own colour. */
   .plate-pill {
-    @apply inline-flex min-w-[48px] items-baseline justify-center gap-1 rounded-lg px-2.5 py-1.5 text-lg font-bold
+    @apply inline-flex min-w-[48px] items-baseline justify-center gap-1 rounded-lg px-2.5 py-1.5 font-cond text-lg font-bold
            tabular-nums;
-    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.18), inset 0 0 0 1px rgb(0 0 0 / 0.08);
+    box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.18), inset 0 0 0 1px rgb(var(--ink) / 0.28);
   }
   .sort-select {
-    @apply min-h-[36px] cursor-pointer rounded-lg border border-line bg-surface px-2 text-xs font-medium text-ink;
+    @apply min-h-[44px] cursor-pointer rounded-lg border border-edge bg-surface px-2 text-sm font-medium text-ink;
   }
   /* Five plate colours, stacked like a loaded sleeve. */
   .brand-mark {
@@ -184,9 +195,10 @@
 }
 .platform-grain::after { content: ''; }
 
-/* Gym mode: bigger type, more contrast, less chrome */
-.gym-mode { font-size: 112.5%; --muted: var(--ink); }
-.gym-mode .gym-hide { display: none !important; }
+/* Gym mode: bigger type and stronger secondary text, for reading the bar from
+   a couple of metres away. It hides nothing — every control stays reachable. */
+.gym-mode { font-size: 112.5%; --muted: 70 68 64; }
+.dark.gym-mode { --muted: 208 205 198; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
