@@ -3,6 +3,7 @@ import { useApp } from '../app/context'
 import { BarbellSVG } from '../components/BarbellSVG'
 import { PlatePill } from '../components/kit/PlatePill'
 import { WarmupPanel } from '../components/WarmupPanel'
+import { feedback } from '../feel'
 import { DESKTOP, useMedia } from '../hooks/useMedia'
 import { fmt } from '../lib/format'
 
@@ -25,7 +26,7 @@ export function WarmupScreen() {
  * sets — so you can load a row and check it without leaving the tab.
  */
 function OnTheBar() {
-  const { settings, selected, result, loadout, collarKind, collarWidth, animate } = useApp()
+  const { settings, update, selected, result, loadout, collarKind, collarWidth, animate } = useApp()
   const byId = useMemo(() => new Map(loadout.plates.map((p) => [p.id, p])), [loadout.plates])
   // Tucked right under the sticky header, whatever its height — gym mode makes it taller.
   const [top, setTop] = useState(0)
@@ -61,23 +62,40 @@ function OnTheBar() {
           )}
         </span>
       </div>
-      {/* The whole bar, small: tap a set below and watch it load. It answers with
-          the same thunks as the Load tab, which isn't on screen to make them. */}
-      <BarbellSVG
-        bar={loadout.bar}
-        plates={loadout.plates}
-        combo={selected}
-        collarKind={collarKind}
-        collarWidthMm={collarWidth}
-        unit={settings.unit}
-        showLabels={settings.showLabels}
-        animate={animate}
-        feedback
-        unloadable={!result.ok}
-        loadId={settings.target}
-        maxHeightPx={96}
-        className="mx-auto mt-1 block h-auto"
-      />
+      {/* Small enough to stay pinned: tap a set below and watch it load, with the
+          same thunks as the Load tab (which isn't on screen to make them). Tap the
+          drawing for the close-up or the whole bar — the same choice as on Load. */}
+      <button
+        type="button"
+        onClick={() => {
+          feedback('select')
+          update({ closeUp: !settings.closeUp })
+        }}
+        aria-pressed={!settings.closeUp}
+        aria-label="Show the whole bar"
+        className="group relative mt-1 flex w-full flex-col items-center rounded-xl focus-visible:ring-inset"
+      >
+        <BarbellSVG
+          bar={loadout.bar}
+          plates={loadout.plates}
+          combo={selected}
+          collarKind={collarKind}
+          collarWidthMm={collarWidth}
+          unit={settings.unit}
+          showLabels={settings.showLabels}
+          closeUp={settings.closeUp}
+          animate={animate}
+          feedback
+          unloadable={!result.ok}
+          loadId={settings.target}
+          maxHeightPx={settings.closeUp ? 140 : 96}
+          className="block h-auto"
+        />
+        {/* Under the drawing, not over it: at this size an overlay would sit on the plates. */}
+        <span aria-hidden="true" className="text-xs font-semibold text-muted transition group-hover:text-ink">
+          {settings.closeUp ? 'Tap for whole bar' : 'Tap for close-up'}
+        </span>
+      </button>
     </div>
   )
 }
