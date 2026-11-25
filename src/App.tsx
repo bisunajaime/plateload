@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ComboList } from './components/ComboList'
 import { Header } from './components/Header'
 import { LoadCard } from './components/LoadCard'
@@ -8,14 +8,18 @@ import { SettingsSheet } from './components/InventoryEditor'
 import { WarmupPanel } from './components/WarmupPanel'
 import { YourWeights } from './components/YourWeights'
 import { Sheet } from './components/ui'
-import { COLLARS, type Unit } from './data/plates'
-import { comboTotal, solve, type Combo } from './lib/combinations'
+import { Toaster } from './components/Toast'
+import { useToast } from './hooks/useToast'
+import type { Moment } from './components/Celebration'
+import { COLLARS, type Brand, type Unit } from './data/plates'
+import { comboTotal, snapToLoadable, solve, type Combo } from './lib/combinations'
+import { WORLD_RECORD, plateMilestone } from './lib/milestones'
 import { fmt } from './lib/format'
-import { buildSolveInput, resolveLoadout } from './lib/settings'
+import { buildSolveInput, resolveLoadout, type Settings } from './lib/settings'
 import { nextJump } from './lib/warmup'
 import { useHasScrolled, useVisibility } from './hooks/useOnScreen'
 import { useSettings } from './hooks/useSettings'
-import { feedback, useReducedMotion } from './feel'
+import { feedback, haptic, useReducedMotion } from './feel'
 
 export default function App() {
   const { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset } = useSettings()
@@ -28,6 +32,10 @@ export default function App() {
   // and back must not resurrect a choice made for another weight.
   const [picked, setPicked] = useState<{ load: string; id: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  // Picking a combination while the bar is scrolled away flashes the preview, so you see what changed.
+  const [peek, setPeek] = useState(0)
+  const copiedTimer = useRef<number | undefined>(undefined)
+  const { toast, show: showToast, dismiss: dismissToast } = useToast()
 
   const loadout = useMemo(() => resolveLoadout(settings), [settings])
   const input = useMemo(() => buildSolveInput(settings), [settings])
@@ -50,6 +58,33 @@ export default function App() {
     return result.combos.find((c) => c.id === selectedId) ?? result.combos[0]
   }, [result, selectedId])
 
+  // Two plates, three plates: marked once you land there and stay a moment —
+  // not on page load, and not while a held + is rushing past.
+  const [moment, setMoment] = useState<Moment | null>(null)
+  const momentSeq = useRef(0)
+  const milestone = result.ok ? plateMilestone(settings.target, loadout.base, settings.unit) : null
+  const lastMilestone = useRef(milestone)
+  useEffect(() => {
+    if (milestone === lastMilestone.current) return
+    lastMilestone.current = milestone
+    if (!milestone) return
+    const t = window.setTimeout(() => {
+      setMoment({ id: ++momentSeq.current, kind: 'milestone', title: milestone, detail: `${fmt(settings.target)} ${settings.unit}` })
+      feedback('milestone')
+    }, 350)
+    return () => window.clearTimeout(t)
+  }, [milestone, settings.target, settings.unit])
+
+  /** The hidden one: hold the logo and the world-record clean & jerk goes on the bar. */
+  const loadWorldRecord = () => {
+    const record = snapToLoadable(input, WORLD_RECORD[settings.unit])
+    undoable('World record on the bar.', ['target'])
+    setTarget(record)
+    lastMilestone.current = null
+    setMoment({ id: ++momentSeq.current, kind: 'record', title: 'Good lift.', detail: `${fmt(record)} ${settings.unit} · clean & jerk world record` })
+    feedback('milestone', { delay: 480 })
+  }
+
   const collarKind = settings.collars ? settings.collarKind : null
   const collarWidth = COLLARS[settings.collarKind].widthMm
 
@@ -68,12 +103,37 @@ export default function App() {
   const copy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(summary)
+      feedback('confirm')
       setCopied(true)
-      setTimeout(() => setCopied(false), 1600)
+      // A second copy restarts the clock rather than being cut short by the first.
+      window.clearTimeout(copiedTimer.current)
+      copiedTimer.current = window.setTimeout(() => setCopied(false), 1600)
     } catch {
-      /* clipboard blocked — nothing to do */
+      haptic('warn')
+      showToast({ message: 'Couldn’t copy — this browser blocked the clipboard.', tone: 'bad' })
     }
-  }, [summary])
+  }, [summary, showToast])
+
+  /**
+   * Changes that rewrite your setup in one tap — a brand switch, a plate
+   * preset — apply at once and offer Undo, instead of asking first.
+   */
+  const undoable = useCallback(
+    (message: string, keys: (keyof Settings)[]) => {
+      const before = Object.fromEntries(keys.map((k) => [k, settings[k]])) as Partial<Settings>
+      showToast({ message, action: { label: 'Undo', run: () => update(before) } })
+    },
+    [settings, showToast, update],
+  )
+
+  const switchBrand = (brand: Brand) => {
+    if (brand === settings.brand) return
+    undoable(
+      `Switched to ${brand === 'metcon' ? 'Metcon, in pounds' : 'Eleiko, in kilos'}. Bar and collars reset.`,
+      ['brand', 'unit', 'barId', 'customBarWeight', 'collarKind', 'collarWeight', 'target', 'inventory'],
+    )
+    setBrand(brand)
+  }
 
   /** A weight chosen on purpose. Remembered only if the plates can make it. */
   const pick = useCallback(
@@ -115,7 +175,7 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      <Header settings={settings} setBrand={setBrand} onSettings={() => setSetupOpen(true)} />
+      <Header settings={settings} setBrand={switchBrand} onSettings={() => setSetupOpen(true)} onLogoHold={loadWorldRecord} />
 
       {/* One column on a phone, the answer first. On desktop the answer stays
           pinned on the left while everything optional scrolls on the right. */}
@@ -147,7 +207,9 @@ export default function App() {
             onJump={jump}
             onEnter={pick}
             onToggleCloseUp={() => update({ closeUp: !settings.closeUp })}
+            moment={moment}
             onSave={addFavorite}
+            saved={settings.favorites.some((f) => f.weight === settings.target && f.unit === settings.unit)}
             onCopy={copy}
             copied={copied}
             changeOff={!settings.includeChange}
@@ -179,6 +241,7 @@ export default function App() {
                 onSelect={(c) => {
                   setPicked({ load: loadKey, id: c.id })
                   feedback('select')
+                  if (!hero.onScreen) setPeek((n) => n + 1)
                 }}
                 truncated={result.truncated}
                 totalFound={result.totalFound}
@@ -211,6 +274,7 @@ export default function App() {
         total={settings.target}
         loadable={result.ok}
         pos={settings.preview}
+        peek={peek}
         onMove={(preview) => update({ preview })}
         animate={animate}
         onClick={() =>
@@ -223,6 +287,11 @@ export default function App() {
         onClose={() => setSetupOpen(false)}
         settings={settings}
         update={update}
+        onInventory={(inventory, label) => {
+          undoable(label, ['inventory'])
+          update({ inventory })
+          feedback('confirm')
+        }}
         onReset={() => {
           reset()
           setSetupOpen(false)
@@ -306,8 +375,12 @@ export default function App() {
         onSave={(label) => {
           setFavOpen(false)
           update({ favorites: [...settings.favorites, { label, weight: settings.target, unit: settings.unit }] })
+          feedback('confirm')
+          showToast({ message: `Saved ${label ? `${label} · ` : ''}${fmt(settings.target)} ${settings.unit}` })
         }}
       />
+
+      <Toaster toast={toast} onDismiss={dismissToast} />
     </div>
   )
 }

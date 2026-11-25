@@ -22,12 +22,15 @@ export function SettingsSheet({
   onClose,
   settings,
   update,
+  onInventory,
   onReset,
 }: {
   open: boolean
   onClose: () => void
   settings: Settings
   update: (patch: Partial<Settings>) => void
+  /** Replace the plate counts wholesale (a preset, a reset) — undoable, with a message. */
+  onInventory: (inventory: Record<string, number>, message: string) => void
   onReset: () => void
 }) {
   const bar = barById(settings.barId)
@@ -196,7 +199,7 @@ export function SettingsSheet({
         </section>
 
         {/* ------------------------------------------------------- inventory */}
-        <InventoryEditor settings={settings} update={update} />
+        <InventoryEditor settings={settings} update={update} onInventory={onInventory} />
       </div>
     </Sheet>
   )
@@ -205,9 +208,11 @@ export function SettingsSheet({
 export function InventoryEditor({
   settings,
   update,
+  onInventory,
 }: {
   settings: Settings
   update: (patch: Partial<Settings>) => void
+  onInventory: (inventory: Record<string, number>, message: string) => void
 }) {
   const plates = useMemo(
     () =>
@@ -242,7 +247,7 @@ export function InventoryEditor({
             type="button"
             className="chip"
             title={p.hint}
-            onClick={() => update({ inventory: { ...settings.inventory, ...zeroed(plates), ...p.counts } })}
+            onClick={() => onInventory({ ...settings.inventory, ...zeroed(plates), ...p.counts }, `Plates set to “${p.label}”.`)}
           >
             {p.label}
           </button>
@@ -250,7 +255,9 @@ export function InventoryEditor({
         <button
           type="button"
           className="chip"
-          onClick={() => update({ inventory: { ...settings.inventory, ...defaultInventory(settings.brand, settings.unit) } })}
+          onClick={() =>
+            onInventory({ ...settings.inventory, ...defaultInventory(settings.brand, settings.unit) }, 'Plates back to the default set.')
+          }
         >
           Reset to default
         </button>
@@ -342,25 +349,71 @@ function PlateRows({
   )
 }
 
+/** How long to hold before everything is erased. */
+const ERASE_HOLD_MS = 1200
+
 /**
- * Reset wipes favourites, recents, inventory and setup, so it takes a second
- * tap — the first only arms it, and it disarms itself after a few seconds.
+ * Reset wipes favourites, recents, inventory and setup, with no undo — so it
+ * takes a deliberate hold. A bar fills while you hold; let go early and
+ * nothing happens. From the keyboard, hold Enter or Space.
  */
 function ResetButton({ onReset }: { onReset: () => void }) {
-  const [armed, setArmed] = useState(false)
+  const [holding, setHolding] = useState(false)
+  const [hint, setHint] = useState(false)
   useEffect(() => {
-    if (!armed) return
-    const t = window.setTimeout(() => setArmed(false), 4000)
+    if (!holding) return
+    const t = window.setTimeout(() => {
+      setHolding(false)
+      feedback('confirm')
+      onReset()
+    }, ERASE_HOLD_MS)
     return () => window.clearTimeout(t)
-  }, [armed])
+  }, [holding, onReset])
+  useEffect(() => {
+    if (!hint) return
+    const t = window.setTimeout(() => setHint(false), 2400)
+    return () => window.clearTimeout(t)
+  }, [hint])
+
+  const start = () => {
+    setHint(false)
+    setHolding(true)
+    feedback('step')
+  }
+  const stop = () => {
+    // Let go too soon: say how it works rather than doing nothing silently.
+    if (holding) setHint(true)
+    setHolding(false)
+  }
   return (
     <button
       type="button"
-      className={`btn ${armed ? 'btn-danger' : 'btn-ghost'}`}
-      onClick={() => (armed ? onReset() : setArmed(true))}
-      aria-live="polite"
+      className={`btn relative overflow-hidden ${holding ? 'btn-danger' : 'btn-ghost'}`}
+      style={{ ['--hold-ms' as string]: `${ERASE_HOLD_MS}ms` }}
+      onPointerDown={(e) => e.button === 0 && start()}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+          e.preventDefault()
+          start()
+        }
+      }}
+      onKeyUp={(e) => (e.key === 'Enter' || e.key === ' ') && stop()}
+      onContextMenu={(e) => e.preventDefault()}
+      aria-describedby="erase-hint"
     >
-      {armed ? 'Tap again to erase everything' : 'Reset everything'}
+      <span aria-hidden="true" data-holding={holding} className="hold-fill absolute inset-0 bg-black/20" />
+      <span className="relative">{holding ? 'Keep holding…' : 'Reset everything'}</span>
+      <span id="erase-hint" className="sr-only" aria-live="polite">
+        {hint ? 'Hold the button to erase everything.' : 'Press and hold to erase favourites, recents, plates and setup.'}
+      </span>
+      {hint && (
+        <span className="pointer-events-none absolute inset-x-0 -top-7 text-center text-xs text-muted fade-up" aria-hidden="true">
+          Hold to erase
+        </span>
+      )}
     </button>
   )
 }

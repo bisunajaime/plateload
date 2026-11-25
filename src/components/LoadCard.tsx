@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useState, type CSSProperties } from 'react'
+import { forwardRef, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { BarDef, CollarKind, PlateDef, Unit } from '../data/plates'
 import type { Combo, SolveResult } from '../lib/combinations'
 import { converted, fmt } from '../lib/format'
@@ -9,6 +9,7 @@ import { Keypad } from './Keypad'
 import { feedback } from '../feel'
 import { useHoldRepeat } from '../feel/hold'
 import { RollingNumber } from './RollingNumber'
+import { Celebration, type Moment } from './Celebration'
 
 /**
  * The answer, in one place: the loaded bar, the weight, and the plates that
@@ -43,7 +44,11 @@ export const LoadCard = forwardRef<
     /** A weight chosen on purpose — typed, or a suggested load. */
     onEnter: (w: number) => void
     onToggleCloseUp: () => void
+    /** A milestone or a record to mark over the bar. */
+    moment: Moment | null
     onSave: () => void
+    /** A favourite already holds this weight — the star shows it filled. */
+    saved: boolean
     onCopy: () => void
     copied: boolean
     changeOff: boolean
@@ -86,6 +91,19 @@ export const LoadCard = forwardRef<
     setTyping(false)
   }
 
+  // Said once the weight settles, not on every step of a held button.
+  const sentence =
+    result.ok && combo
+      ? combo.plates.length
+        ? `${fmt(target)} ${unit}: ${combo.plates.map((p) => `${p.count > 1 ? `${p.count} × ` : ''}${fmt(p.weight)}`).join(', ')} each side`
+        : `${fmt(target)} ${unit}: empty bar`
+      : `${fmt(target)} ${unit} can’t be loaded`
+  const [announcement, setAnnouncement] = useState(sentence)
+  useEffect(() => {
+    const t = window.setTimeout(() => setAnnouncement(sentence), 450)
+    return () => window.clearTimeout(t)
+  }, [sentence])
+
   // Sized to fit between the steppers, from the integer digits plus room for
   // one decimal — so 100 and 102.5 are the same size and a step never makes
   // the number jump. Unbounded is wide: about 0.76em a digit, 0.3em a point.
@@ -116,6 +134,7 @@ export const LoadCard = forwardRef<
             className="block h-auto"
           />
         </div>
+        <Celebration moment={props.moment} />
         {/* View controls sit on the drawing they change, out of the way. */}
         <div className="absolute right-2 top-2 flex gap-1 gym-hide">
           <button
@@ -198,11 +217,7 @@ export const LoadCard = forwardRef<
         {/* ------------------------------------------------------ the plates */}
         {/* One short sentence for screen readers, instead of re-reading the chips and buttons. */}
         <p className="sr-only" aria-live="polite">
-          {result.ok && combo
-            ? combo.plates.length
-              ? `${fmt(target)} ${unit}: ${combo.plates.map((p) => `${p.count > 1 ? `${p.count} × ` : ''}${fmt(p.weight)}`).join(', ')} each side`
-              : `${fmt(target)} ${unit}: empty bar`
-            : `${fmt(target)} ${unit} can’t be loaded`}
+          {announcement}
         </p>
         <div className="mt-5 min-h-[76px]">
           {result.ok && combo ? (
@@ -284,11 +299,14 @@ export const LoadCard = forwardRef<
       {/* --------------------------------------------------------- actions */}
       <div className="grid grid-cols-2 border-t border-line">
         <button type="button" className="action-btn" onClick={props.onSave} disabled={!result.ok}>
-          <StarIcon size={17} />
-          Save weight
+          {/* Keyed on the state, so filling the star replays the pop. */}
+          <span key={props.saved ? 'on' : 'off'} className={props.saved && props.animate ? 'pop inline-flex' : 'inline-flex'}>
+            <StarIcon filled={props.saved} />
+          </span>
+          {props.saved ? 'Saved' : 'Save weight'}
         </button>
         <button type="button" className="action-btn border-l border-line" onClick={props.onCopy} disabled={!result.ok}>
-          <CopyIcon />
+          {props.copied ? <CheckIcon /> : <CopyIcon />}
           {props.copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -306,3 +324,10 @@ export const LoadCard = forwardRef<
     </section>
   )
 })
+
+/** A check that draws itself in — the copy landed. */
+const CheckIcon = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path className="draw" pathLength={1} d="M5 12.5 10 17.5 19 7" />
+  </svg>
+)

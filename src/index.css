@@ -194,6 +194,8 @@
     transition-duration: 0.001ms !important;
   }
   .roll-out { display: none; }
+  /* The hold-to-erase fill is a progress bar, not decoration: it keeps its pace. */
+  .hold-fill[data-holding='true'] { transition-duration: var(--hold-ms, 1200ms) !important; }
 }
 
 /* ------------------------------------------------------------------ plates */
@@ -265,3 +267,66 @@
   from { transform: none; filter: blur(0); opacity: 1; }
   to { transform: translateY(75%) scaleY(1.15); filter: blur(7px); opacity: 0; }
 }
+
+/* ------------------------------------------------------------------ toasts */
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px); }
+}
+.toast-in { animation: toast-in var(--dur-base) var(--ease-out) both; }
+.toast-out { animation: toast-out var(--dur-quick) var(--ease-in) both; }
+
+/* ------------------------------------------------------- small confirmations */
+
+/* A star filling, a check landing: a quick swell that seats back. */
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.pop { animation: pop var(--dur-settle) var(--ease-seat) both; transform-origin: center; transform-box: fill-box; }
+
+/* A check mark drawing itself. The path sets pathLength="1". */
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.draw { stroke-dasharray: 1; animation: draw var(--dur-base) var(--ease-out) both; }
+
+/* Press-and-hold: a bar filling across the button while you hold. */
+.hold-fill {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-quick) var(--ease-out);
+}
+.hold-fill[data-holding='true'] {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms, 1200ms) linear;
+}
+
+/* ---------------------------------------------------------- celebrations */
+
+/* Chalk dust: a few specks thrown out and settling, like a clap of the hands. */
+@keyframes chalk {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+}
+.chalk { animation: chalk 900ms var(--ease-out) both; }
+
+/* Referee lights coming on, one judge at a time. */
+@keyframes light-on {
+  from { opacity: 0; transform: scale(0.6); box-shadow: 0 0 0 0 rgb(255 255 255 / 0); }
+  to { opacity: 1; transform: none; box-shadow: 0 0 22px 4px rgb(255 255 255 / 0.55); }
+}
+.judge-light { animation: light-on var(--dur-base) var(--ease-seat) both; }
+
+@keyframes moment {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  12% { opacity: 1; transform: none; }
+  82% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.moment { animation: moment 2400ms var(--ease-out) both; }
