@@ -99,6 +99,9 @@ export const LoadCard = forwardRef<
             showLabels={props.showLabels}
             closeUp={props.closeUp}
             animate={props.animate}
+            feedback
+            unloadable={!result.ok}
+            loadId={target}
             zoom={zoom}
             maxHeightPx={300}
             className="block h-auto"

@@ -4,11 +4,18 @@
  * Coordinate system is the bar itself — x runs 0 … bar.lengthMm, y is centred on
  * the shaft axis, everything is a real dimension. Nothing here invents a size.
  */
-import { useId, useMemo } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { BarDef, CollarKind, PlateDef, Unit } from '../data/plates'
+import { duration, ease, feedback, stagger } from '../feel'
 import type { Combo } from '../lib/combinations'
 import { fmt } from '../lib/format'
+import { diffStack, enterDelays, stackKey } from '../lib/stack'
 import { CollarProfile, PlateDefs, PlateProfile } from './PlateSVG'
+
+/** How long plates coming off get before new ones start going on. */
+const CLEAR_MS = 110
+/** The moment in a plate's travel when it hits the stack — where the spring first reaches home. */
+const SEAT_AT = Math.round(duration.settle * 0.45)
 
 export interface BarbellSVGProps {
   bar: BarDef
@@ -30,6 +37,12 @@ export interface BarbellSVGProps {
   className?: string
   /** Extra horizontal magnification; the container scrolls. */
   zoom?: number
+  /** The target can't be built: the drawing says so, not just the text under it. */
+  unloadable?: boolean
+  /** Changes whenever the target does — so a second unloadable weight still answers. */
+  loadId?: string | number
+  /** Sound and haptics as plates go on and off. Only the hero bar does this. */
+  feedback?: boolean
 }
 
 interface Instance {
@@ -53,6 +66,9 @@ export function BarbellSVG({
   animate = true,
   className,
   zoom = 1,
+  unloadable = false,
+  loadId,
+  feedback: respond = false,
 }: BarbellSVGProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const L = bar.lengthMm
@@ -78,6 +94,47 @@ export function BarbellSVG({
     }
     return { instances: list, used: x - shaftEnd }
   }, [combo, byId, shaftEnd])
+
+  const sleeveState = useSleeve(instances, animate)
+  const rig = useRef<SVGGElement>(null)
+
+  // Plates going on and coming off: a thunk as each one seats, and the bar
+  // takes the weight with a small dip once the last one lands.
+  const change = sleeveState.change
+  useEffect(() => {
+    if (!change) return
+    const { entering, exiting, delays } = change
+    if (respond && exiting.length) feedback('unseat')
+    if (!entering.length) return
+    let last = 0
+    entering.forEach((inst, i) => {
+      const at = (delays[i] ?? 0) + SEAT_AT
+      last = Math.max(last, at)
+      if (respond) feedback('seat', { delay: at, size: Math.min(1, inst.plate.thicknessMm / 70) })
+    })
+    if (!animate) return
+    const a = rig.current?.animate(
+      [{ transform: 'translateY(0)' }, { transform: 'translateY(7px)' }, { transform: 'translateY(-2px)' }, { transform: 'translateY(0)' }],
+      { duration: 300, delay: last, easing: ease.out },
+    )
+    return () => a?.cancel()
+  }, [change, respond, animate])
+
+  // A weight the plates can't make: the empty sleeve shakes its head.
+  const settled = useRef(false)
+  useEffect(() => {
+    // Not on first paint: a page that opens on an impossible weight just shows it.
+    const first = !settled.current
+    settled.current = true
+    if (first || !unloadable || loadId === undefined) return
+    if (respond) feedback('cantLoad')
+    if (!animate) return
+    const a = rig.current?.animate(
+      [0, -10, 9, -6, 4, -2, 0].map((x) => ({ transform: `translateX(${x}px)` })),
+      { duration: 380, delay: 60, easing: 'ease-out' },
+    )
+    return () => a?.cancel()
+  }, [unloadable, loadId, respond, animate])
 
   const collarX = shaftEnd + used
   const collarFits = collarKind ? collarX + collarWidthMm <= L - 6 : true
@@ -113,9 +170,11 @@ export function BarbellSVG({
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={
-        combo && combo.plates.length
-          ? `Barbell loaded with ${combo.plates.map((p) => `${p.count} times ${fmt(p.weight)} ${unit}`).join(', ')} each side`
-          : 'Empty barbell'
+        unloadable
+          ? 'Empty barbell — your plates can’t make this weight'
+          : combo && combo.plates.length
+            ? `Barbell loaded with ${combo.plates.map((p) => `${p.count} times ${fmt(p.weight)} ${unit}`).join(', ')} each side`
+            : 'Empty barbell'
       }
     >
       <PlateDefs uid={uid} />
@@ -135,6 +194,7 @@ export function BarbellSVG({
       {!closeUp && <rect x={-40} y={272} width={L + 80} height={110} fill={`url(#${uid}-floor)`} />}
       <line x1={-40} y1={272} x2={L + 80} y2={272} stroke="rgb(var(--ink))" strokeOpacity="0.18" strokeWidth="2" />
 
+      <g ref={rig}>
       {/* ------------------------------------------------------------- the bar */}
       <g>
         {/* sleeves */}
@@ -169,29 +229,48 @@ export function BarbellSVG({
       {/* ------------------------------------------------------------- plates */}
       {[1, -1].map((side) => (
         <g key={side} transform={side === -1 ? `translate(${L} 0) scale(-1 1)` : undefined}>
+          {sleeveState.leaving.map(({ inst, gen, order }) => (
+            <Slot key={`off-${gen}-${inst.index}-${inst.plate.id}`} x={inst.x} animate={animate}>
+              <g className="plate-out" style={{ animationDelay: `${order * 30}ms` }}>
+                <PlateProfile plate={inst.plate} x={0} uid={uid} detail="full" />
+              </g>
+            </Slot>
+          ))}
           {instances.map((inst) => (
-            <g
-              key={`${side}-${inst.index}-${inst.plate.id}`}
-              className={animate ? 'plate-anim' : undefined}
-              style={
-                animate
-                  ? ({ animationDelay: `${inst.index * 55}ms`, ['--slide' as string]: '150px' } as React.CSSProperties)
-                  : undefined
-              }
-            >
-              <PlateProfile plate={inst.plate} x={inst.x} uid={uid} detail={closeUp ? 'full' : 'full'} />
-            </g>
+            <Slot key={stackKey(inst.index, inst.plate.id)} x={inst.x} animate={animate} enterDelay={sleeveState.delayOf(inst)}>
+              <PlateProfile plate={inst.plate} x={0} uid={uid} detail="full" />
+            </Slot>
           ))}
           {collarKind && collarFits && (
-            <g
-              className={animate ? 'plate-anim' : undefined}
-              style={animate ? ({ animationDelay: `${instances.length * 55}ms` } as React.CSSProperties) : undefined}
+            <Slot
+              key={`collar-${collarKind}`}
+              x={collarX}
+              animate={animate}
+              enterDelay={instances.length * stagger.plate}
+              glideDelay={sleeveState.change?.exiting.length ? CLEAR_MS : 0}
             >
-              <CollarProfile kind={collarKind} x={collarX} widthMm={collarWidthMm} uid={uid} />
-            </g>
+              <CollarProfile kind={collarKind} x={0} widthMm={collarWidthMm} uid={uid} />
+            </Slot>
+          )}
+          {/* Nothing fits: a dashed outline where the first plate would go. */}
+          {unloadable && (
+            <rect
+              className={animate ? 'fade-up' : undefined}
+              x={collarX + (collarKind && collarFits ? collarWidthMm : 0) + 8}
+              y={-200}
+              width={56}
+              height={400}
+              rx={10}
+              fill="none"
+              stroke="rgb(var(--bad))"
+              strokeOpacity="0.55"
+              strokeWidth="3"
+              strokeDasharray="14 12"
+            />
           )}
         </g>
       ))}
+      </g>
 
       {/* ------------------------------------------------------------- labels */}
       {showLabels &&
@@ -227,6 +306,117 @@ export function BarbellSVG({
 
     </svg>
   )
+}
+
+/**
+ * A plate's place on the sleeve. The outer group carries the position and
+ * glides when it changes; the inner one plays the slide-on once, with the
+ * delay it was born with — changing an animation's delay later would rewind
+ * a plate that had already landed.
+ */
+function Slot({
+  x,
+  animate,
+  enterDelay,
+  glideDelay = 0,
+  children,
+}: {
+  x: number
+  animate: boolean
+  enterDelay?: number
+  /** Hold the glide back — the collar waits for leaving plates to clear before it slides in. */
+  glideDelay?: number
+  children: ReactNode
+}) {
+  const [delay] = useState(enterDelay)
+  return (
+    <g
+      className={animate ? 'plate-glide' : undefined}
+      style={{ transform: `translateX(${x}px)`, transitionDelay: glideDelay ? `${glideDelay}ms` : undefined }}
+    >
+      {delay === undefined ? (
+        children
+      ) : (
+        <g
+          className={animate ? 'plate-anim' : undefined}
+          style={animate ? ({ animationDelay: `${delay}ms`, ['--slide' as string]: '150px' } as CSSProperties) : undefined}
+        >
+          {children}
+        </g>
+      )}
+    </g>
+  )
+}
+
+interface Leaving {
+  inst: Instance
+  gen: number
+  /** 0 = outermost: the first to come off. */
+  order: number
+}
+
+interface SleeveChange {
+  entering: Instance[]
+  /** When each entering plate starts, ms — same order as `entering`. */
+  delays: number[]
+  exiting: Instance[]
+}
+
+/**
+ * Follows the stack from load to load: which plates are new (and when each
+ * starts moving), which stay, and which are on their way off — kept drawn
+ * just long enough to leave.
+ */
+function useSleeve(instances: Instance[], animate: boolean) {
+  const keys = instances.map((i) => stackKey(i.index, i.plate.id))
+  const sig = keys.join('|')
+  const [state, setState] = useState(() => ({
+    sig,
+    instances,
+    gen: 0,
+    delays: enterDelays(diffStack([], keys), stagger.plate, 0),
+    leaving: [] as Leaving[],
+    change: null as SleeveChange | null,
+  }))
+
+  // Derived during render, so the new plates and the leaving ones arrive in the same frame.
+  if (sig !== state.sig) {
+    const prevKeys = state.instances.map((i) => stackKey(i.index, i.plate.id))
+    const diff = diffStack(prevKeys, keys)
+    const delays = enterDelays(diff, stagger.plate, CLEAR_MS)
+    const gen = state.gen + 1
+    const byKey = new Map(state.instances.map((i) => [stackKey(i.index, i.plate.id), i]))
+    const exiting = diff.exiting.map((k) => byKey.get(k)!).filter(Boolean)
+    const entering = instances.filter((i) => delays.has(stackKey(i.index, i.plate.id)))
+    setState({
+      sig,
+      instances,
+      gen,
+      delays,
+      leaving: animate ? [...state.leaving, ...exiting.map((inst, order) => ({ inst, gen, order }))] : [],
+      change: {
+        entering,
+        delays: entering.map((i) => delays.get(stackKey(i.index, i.plate.id)) ?? 0),
+        exiting,
+      },
+    })
+  }
+
+  // Once the latest leavers are gone, drop every leaver up to now. A newer
+  // change restarts the clock, so a plate is never cut off mid-exit.
+  const anyLeaving = state.leaving.length > 0
+  useEffect(() => {
+    if (!anyLeaving) return
+    const gen = state.gen
+    const t = window.setTimeout(
+      () => setState((s) => ({ ...s, leaving: s.leaving.filter((l) => l.gen > gen) })),
+      duration.base + 120,
+    )
+    return () => window.clearTimeout(t)
+  }, [state.gen, anyLeaving])
+
+  const delayOf = (inst: Instance) => state.delays.get(stackKey(inst.index, inst.plate.id)) ?? 0
+  return { leaving: state.leaving, change: state.change, delayOf }
 }
 
 /** One sleeve, no bar furniture — for combination cards. */
