@@ -6,7 +6,7 @@ import { snapToLoadable, solve } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, buildSolveInput, defaultSettings, resolveLoadout } from '../lib/settings'
 import { useReducedMotion } from '../feel/motion'
-import { RollingNumber } from './RollingNumber'
+import { RollingNumber } from '../components/RollingNumber'
 import { LoadingBay, RollingPlate, ScrollMarquee } from './scroll'
 import { useScrollVar } from './useScroll'
 

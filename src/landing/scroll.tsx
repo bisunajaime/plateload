@@ -5,7 +5,7 @@ import type { Combo } from '../lib/combinations'
 import { fmt } from '../lib/format'
 import { applyBrand, defaultSettings, resolveLoadout } from '../lib/settings'
 import { prefersReducedMotion, useReducedMotion } from '../feel/motion'
-import { RollingNumber } from './RollingNumber'
+import { RollingNumber } from '../components/RollingNumber'
 import { clamp, passProgress, pinnedProgress, useScrollFrame } from './useScroll'
 
 /* ------------------------------------------------------------ loading bay */

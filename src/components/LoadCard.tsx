@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useState } from 'react'
+import { forwardRef, useMemo, useState, type CSSProperties } from 'react'
 import type { BarDef, CollarKind, PlateDef, Unit } from '../data/plates'
 import type { Combo, SolveResult } from '../lib/combinations'
 import { converted, fmt } from '../lib/format'
@@ -7,6 +7,8 @@ import { EmptyState } from './EmptyState'
 import { CopyIcon, MinusIcon, PlusIcon, Sheet, StarIcon, ZoomIcon } from './ui'
 import { Keypad } from './Keypad'
 import { feedback } from '../feel'
+import { useHoldRepeat } from '../feel/hold'
+import { RollingNumber } from './RollingNumber'
 
 /**
  * The answer, in one place: the loaded bar, the weight, and the plates that
@@ -60,11 +62,14 @@ export const LoadCard = forwardRef<
   const byId = useMemo(() => new Map(plates.map((p) => [p.id, p])), [plates])
 
   const buzz = () => feedback('step')
+  // Held, these repeat — reading the latest neighbour each time — until there's nowhere left to go.
   const step = (w: number | null) => {
-    if (w == null) return
+    if (w == null) return false
     props.onStep(w)
     buzz()
   }
+  const holdDown = useHoldRepeat(() => step(props.down))
+  const holdUp = useHoldRepeat(() => step(props.up))
 
   // A phone gets the big keypad; a keyboard gets a field to type into.
   const startTyping = () => {
@@ -81,8 +86,12 @@ export const LoadCard = forwardRef<
     setTyping(false)
   }
 
-  const digits = fmt(target).length
-  const size = digits > 5 ? 'text-5xl sm:text-6xl' : digits > 4 ? 'text-6xl sm:text-7xl' : 'text-7xl sm:text-8xl'
+  // Sized to fit between the steppers, from the integer digits plus room for
+  // one decimal — so 100 and 102.5 are the same size and a step never makes
+  // the number jump. Unbounded is wide: about 0.76em a digit, 0.3em a point.
+  const [intPart, frac = ''] = fmt(target).split('.')
+  const ems = intPart.length * 0.76 + 0.3 + Math.max(1, frac.length) * 0.76
+  const numberSize: CSSProperties = { fontSize: `min(var(--hero-cap), calc((100cqi - 3.4rem) / ${ems}))` }
 
   return (
     <section ref={ref} className="card overflow-hidden" aria-label="Your load">
@@ -135,22 +144,23 @@ export const LoadCard = forwardRef<
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            className="step-btn"
-            onClick={() => step(props.down)}
+            className="step-btn select-none"
+            {...holdDown}
             disabled={props.down == null}
             aria-label={props.down != null ? `Down to ${fmt(props.down)} ${unit}` : 'Nothing lighter to load'}
           >
             <MinusIcon />
           </button>
 
-          <div className="flex min-w-0 flex-1 flex-col items-center">
+          <div className="flex min-w-0 flex-1 flex-col items-center [--hero-cap:4.5rem] [container-type:inline-size] sm:[--hero-cap:6rem]">
             {typing ? (
               <input
                 autoFocus
                 inputMode="decimal"
                 type="number"
                 step="any"
-                className={`w-full min-w-0 bg-transparent text-center font-display font-semibold tabular-nums outline-none ${size}`}
+                className="w-full min-w-0 bg-transparent text-center font-display font-semibold tabular-nums outline-none"
+                style={numberSize}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={() => commit(draft)}
@@ -167,7 +177,7 @@ export const LoadCard = forwardRef<
                 className="group flex items-baseline gap-1.5 rounded-2xl px-3 transition hover:bg-surface2/60"
                 aria-label={`${fmt(target)} ${unit}. Tap to enter a weight.`}
               >
-                <span className={`font-display font-semibold leading-none tabular-nums ${size}`}>{fmt(target)}</span>
+                <RollingNumber value={target} className="font-display font-semibold leading-none tabular-nums" style={numberSize} />
                 <span className="text-xl font-medium text-muted">{unit}</span>
               </button>
             )}
@@ -176,8 +186,8 @@ export const LoadCard = forwardRef<
 
           <button
             type="button"
-            className="step-btn"
-            onClick={() => step(props.up)}
+            className="step-btn select-none"
+            {...holdUp}
             disabled={props.up == null}
             aria-label={props.up != null ? `Up to ${fmt(props.up)} ${unit}` : 'Nothing heavier to load'}
           >
