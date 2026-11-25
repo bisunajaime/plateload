@@ -15,14 +15,14 @@ import { COLLARS, type Brand, type Unit } from './data/plates'
 import { comboTotal, snapToLoadable, solve, type Combo } from './lib/combinations'
 import { WORLD_RECORD, plateMilestone } from './lib/milestones'
 import { fmt } from './lib/format'
-import { buildSolveInput, resolveLoadout, type Settings } from './lib/settings'
+import { applyBrand, buildSolveInput, resolveLoadout, type Settings } from './lib/settings'
 import { nextJump } from './lib/warmup'
 import { useHasScrolled, useVisibility } from './hooks/useOnScreen'
 import { useSettings } from './hooks/useSettings'
-import { feedback, haptic, useReducedMotion } from './feel'
+import { feedback, useReducedMotion } from './feel'
 
 export default function App() {
-  const { settings, update, setBrand, setTarget, rememberWeight, pickWeight, reset } = useSettings()
+  const { settings, update, setTarget, rememberWeight, pickWeight, reset } = useSettings()
   const [setupOpen, setSetupOpen] = useState(false)
   const [favOpen, setFavOpen] = useState(false)
   const [removing, setRemoving] = useState<number | null>(null)
@@ -64,22 +64,26 @@ export default function App() {
   const momentSeq = useRef(0)
   const milestone = result.ok ? plateMilestone(settings.target, loadout.base, settings.unit) : null
   const lastMilestone = useRef(milestone)
+  // The caption reads the weight when it fires; only a change of milestone reschedules it.
+  const landedOn = useRef(`${fmt(settings.target)} ${settings.unit}`)
+  useEffect(() => {
+    landedOn.current = `${fmt(settings.target)} ${settings.unit}`
+  })
   useEffect(() => {
     if (milestone === lastMilestone.current) return
     lastMilestone.current = milestone
     if (!milestone) return
     const t = window.setTimeout(() => {
-      setMoment({ id: ++momentSeq.current, kind: 'milestone', title: milestone, detail: `${fmt(settings.target)} ${settings.unit}` })
+      setMoment({ id: ++momentSeq.current, kind: 'milestone', title: milestone, detail: landedOn.current })
       feedback('milestone')
     }, 350)
     return () => window.clearTimeout(t)
-  }, [milestone, settings.target, settings.unit])
+  }, [milestone])
 
   /** The hidden one: hold the logo and the world-record clean & jerk goes on the bar. */
   const loadWorldRecord = () => {
     const record = snapToLoadable(input, WORLD_RECORD[settings.unit])
-    undoable('World record on the bar.', ['target'])
-    setTarget(record)
+    applyUndoable('World record on the bar.', { target: record })
     lastMilestone.current = null
     setMoment({ id: ++momentSeq.current, kind: 'record', title: 'Good lift.', detail: `${fmt(record)} ${settings.unit} · clean & jerk world record` })
     feedback('milestone', { delay: 480 })
@@ -109,30 +113,46 @@ export default function App() {
       window.clearTimeout(copiedTimer.current)
       copiedTimer.current = window.setTimeout(() => setCopied(false), 1600)
     } catch {
-      haptic('warn')
+      feedback('error')
       showToast({ message: 'Couldn’t copy — this browser blocked the clipboard.', tone: 'bad' })
     }
   }, [summary, showToast])
 
   /**
    * Changes that rewrite your setup in one tap — a brand switch, a plate
-   * preset — apply at once and offer Undo, instead of asking first.
+   * preset — apply at once and offer Undo, instead of asking first. Undo puts
+   * back exactly what the change replaced, and only while those settings are
+   * still as the change left them: it never reverts something done since.
    */
-  const undoable = useCallback(
-    (message: string, keys: (keyof Settings)[]) => {
-      const before = Object.fromEntries(keys.map((k) => [k, settings[k]])) as Partial<Settings>
-      showToast({ message, action: { label: 'Undo', run: () => update(before) } })
-    },
-    [settings, showToast, update],
-  )
+  const latest = useRef(settings)
+  useEffect(() => {
+    latest.current = settings
+  })
+  const applyUndoable = (message: string, next: Partial<Settings>) => {
+    const keys = Object.keys(next) as (keyof Settings)[]
+    const before = Object.fromEntries(keys.map((k) => [k, settings[k]])) as Partial<Settings>
+    update(next)
+    showToast({
+      message,
+      action: {
+        label: 'Undo',
+        run: () => {
+          const untouched = keys.every((k) => JSON.stringify(latest.current[k]) === JSON.stringify(next[k]))
+          if (untouched) update(before)
+          else showToast({ message: 'Can’t undo — that’s been changed since.', tone: 'bad' })
+        },
+      },
+    })
+  }
 
   const switchBrand = (brand: Brand) => {
     if (brand === settings.brand) return
-    undoable(
+    const next = applyBrand(settings, brand)
+    const keys = ['brand', 'unit', 'barId', 'customBarWeight', 'collarKind', 'collarWeight', 'target', 'inventory'] as const
+    applyUndoable(
       `Switched to ${brand === 'metcon' ? 'Metcon, in pounds' : 'Eleiko, in kilos'}. Bar and collars reset.`,
-      ['brand', 'unit', 'barId', 'customBarWeight', 'collarKind', 'collarWeight', 'target', 'inventory'],
+      Object.fromEntries(keys.map((k) => [k, next[k]])) as Partial<Settings>,
     )
-    setBrand(brand)
   }
 
   /** A weight chosen on purpose. Remembered only if the plates can make it. */
@@ -288,11 +308,12 @@ export default function App() {
         settings={settings}
         update={update}
         onInventory={(inventory, label) => {
-          undoable(label, ['inventory'])
-          update({ inventory })
+          applyUndoable(label, { inventory })
           feedback('confirm')
         }}
         onReset={() => {
+          // Nothing from before a reset can be undone into the fresh state.
+          dismissToast()
           reset()
           setSetupOpen(false)
         }}

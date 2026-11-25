@@ -19,6 +19,8 @@ export const duration = {
   settle: 420,
   /** A scoreboard digit rolling over. */
   roll: 460,
+  /** How long a celebration caption stays up. */
+  linger: 2400,
 } as const
 
 export const ease = {

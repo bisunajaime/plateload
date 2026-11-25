@@ -18,6 +18,7 @@ export type Moment =
   | 'unseat' // a plate coming off
   | 'confirm' // saved, copied, applied
   | 'cantLoad' // the plates can't make it
+  | 'error' // something failed: the clipboard said no
   | 'snap' // something dragged settles into place
   | 'milestone' // a round, famous number on the bar
 
@@ -29,14 +30,26 @@ const RESPONSES: Record<Moment, [Sound | null, Haptic | null]> = {
   unseat: ['unseat', null],
   confirm: ['chime', 'confirm'],
   cantLoad: ['thud', 'warn'],
+  error: ['thud', 'warn'],
   snap: ['click', 'tick'],
   milestone: ['fanfare', 'heavy'],
 }
 
-export function feedback(moment: Moment, options: PlayOptions = {}) {
+/**
+ * Respond to a moment. With a delay — a sound that should land with an
+ * animation — it returns a cancel, so a response for something that has
+ * since been undone (a plate replaced before it seated) never plays.
+ */
+export function feedback(moment: Moment, options: PlayOptions = {}): () => void {
   const [sound, buzz] = RESPONSES[moment]
-  if (sound) play(sound, options)
-  if (!buzz) return
-  if (options.delay) window.setTimeout(() => haptic(buzz), options.delay)
-  else haptic(buzz)
+  const fire = () => {
+    if (sound) play(sound, { ...options, delay: 0 })
+    if (buzz) haptic(buzz)
+  }
+  if (!options.delay) {
+    fire()
+    return () => {}
+  }
+  const t = window.setTimeout(fire, options.delay)
+  return () => window.clearTimeout(t)
 }

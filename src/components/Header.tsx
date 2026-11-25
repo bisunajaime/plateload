@@ -44,11 +44,18 @@ export function Header({
             }, 700)
           }}
           onPointerUp={release}
-          onPointerLeave={release}
-          onPointerCancel={release}
+          onPointerLeave={() => {
+            release()
+            fired.current = false
+          }}
+          onPointerCancel={() => {
+            release()
+            fired.current = false
+          }}
           onContextMenu={(e) => onLogoHold && e.preventDefault()}
           onClick={(e) => {
-            if (fired.current) {
+            // Enter on the link (detail 0) always navigates.
+            if (fired.current && e.detail !== 0) {
               fired.current = false
               e.preventDefault()
             }

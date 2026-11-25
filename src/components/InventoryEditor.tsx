@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BARS,
   COLLARS,
@@ -351,69 +351,93 @@ function PlateRows({
 
 /** How long to hold before everything is erased. */
 const ERASE_HOLD_MS = 1200
+/** How long a keyboard-armed erase waits for the second press. */
+const ERASE_ARM_MS = 4000
 
 /**
  * Reset wipes favourites, recents, inventory and setup, with no undo — so it
- * takes a deliberate hold. A bar fills while you hold; let go early and
- * nothing happens. From the keyboard, hold Enter or Space.
+ * takes deliberate effort. With a finger or a mouse: hold, while a bar fills;
+ * let go early and nothing happens. A keyboard, screen reader or switch can
+ * only click, so there it is two presses: the first arms, the second erases.
  */
 function ResetButton({ onReset }: { onReset: () => void }) {
   const [holding, setHolding] = useState(false)
+  const [armed, setArmed] = useState(false)
   const [hint, setHint] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  const resetRef = useRef(onReset)
   useEffect(() => {
-    if (!holding) return
+    resetRef.current = onReset
+  })
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  useEffect(() => {
+    if (!armed && !hint) return
     const t = window.setTimeout(() => {
-      setHolding(false)
-      feedback('confirm')
-      onReset()
-    }, ERASE_HOLD_MS)
+      setArmed(false)
+      setHint(false)
+    }, armed ? ERASE_ARM_MS : 2400)
     return () => window.clearTimeout(t)
-  }, [holding, onReset])
-  useEffect(() => {
-    if (!hint) return
-    const t = window.setTimeout(() => setHint(false), 2400)
-    return () => window.clearTimeout(t)
-  }, [hint])
+  }, [armed, hint])
 
+  const erase = () => {
+    setHolding(false)
+    setArmed(false)
+    feedback('confirm')
+    resetRef.current()
+  }
   const start = () => {
     setHint(false)
     setHolding(true)
     feedback('step')
+    // Scheduled here, once: a re-render mid-hold must not restart the count.
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(erase, ERASE_HOLD_MS)
   }
   const stop = () => {
-    // Let go too soon: say how it works rather than doing nothing silently.
-    if (holding) setHint(true)
+    if (!holding) return
+    window.clearTimeout(timer.current)
     setHolding(false)
+    // Let go too soon: say how it works rather than doing nothing silently.
+    setHint(true)
   }
+
   return (
-    <button
-      type="button"
-      className={`btn relative overflow-hidden ${holding ? 'btn-danger' : 'btn-ghost'}`}
-      style={{ ['--hold-ms' as string]: `${ERASE_HOLD_MS}ms` }}
-      onPointerDown={(e) => e.button === 0 && start()}
-      onPointerUp={stop}
-      onPointerLeave={stop}
-      onPointerCancel={stop}
-      onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
-          e.preventDefault()
-          start()
-        }
-      }}
-      onKeyUp={(e) => (e.key === 'Enter' || e.key === ' ') && stop()}
-      onContextMenu={(e) => e.preventDefault()}
-      aria-describedby="erase-hint"
-    >
-      <span aria-hidden="true" data-holding={holding} className="hold-fill absolute inset-0 bg-black/20" />
-      <span className="relative">{holding ? 'Keep holding…' : 'Reset everything'}</span>
-      <span id="erase-hint" className="sr-only" aria-live="polite">
-        {hint ? 'Hold the button to erase everything.' : 'Press and hold to erase favourites, recents, plates and setup.'}
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        className={`btn relative select-none overflow-hidden [-webkit-touch-callout:none] ${holding || armed ? 'btn-danger' : 'btn-ghost'}`}
+        style={{ ['--hold-ms' as string]: `${ERASE_HOLD_MS}ms` }}
+        onPointerDown={(e) => e.button === 0 && start()}
+        onPointerUp={stop}
+        onPointerLeave={stop}
+        onPointerCancel={stop}
+        onClick={(e) => {
+          // Pointer clicks are handled by the hold. A click with no pointer
+          // behind it (detail 0) is a keyboard or assistive press: arm, then erase.
+          if (e.detail !== 0) return
+          if (armed) erase()
+          else {
+            setArmed(true)
+            feedback('step')
+          }
+        }}
+        onContextMenu={(e) => e.preventDefault()}
+        aria-describedby="erase-hint"
+      >
+        <span aria-hidden="true" data-holding={holding} className="hold-fill absolute inset-0 bg-black/20" />
+        <span className="relative">{holding ? 'Keep holding…' : armed ? 'Press again to erase everything' : 'Reset everything'}</span>
+      </button>
+      <span id="erase-hint" className="sr-only">
+        Erases favourites, recents, plates and setup. Hold to erase, or press twice.
+      </span>
+      <span className="sr-only" aria-live="polite">
+        {armed ? 'Press again to erase everything.' : ''}
       </span>
       {hint && (
-        <span className="pointer-events-none absolute inset-x-0 -top-7 text-center text-xs text-muted fade-up" aria-hidden="true">
+        <span className="pointer-events-none absolute inset-x-0 -top-6 whitespace-nowrap text-center text-xs text-muted fade-up" aria-hidden="true">
           Hold to erase
         </span>
       )}
-    </button>
+    </span>
   )
 }

@@ -10,6 +10,7 @@
     --dur-base: 240ms;
     --dur-settle: 420ms;
     --dur-roll: 460ms;
+    --dur-linger: 2400ms;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
     --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
     --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
@@ -190,10 +191,14 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
+    /* A delayed, both-filled animation would otherwise sit at its start (often invisible) for the delay. */
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
   .roll-out { display: none; }
+  /* A caption that fades in and out would jump straight to "out": just show it; it unmounts on its own. */
+  .moment { animation: none !important; }
   /* The hold-to-erase fill is a progress bar, not decoration: it keeps its pace. */
   .hold-fill[data-holding='true'] { transition-duration: var(--hold-ms, 1200ms) !important; }
 }
@@ -314,7 +319,7 @@
   15% { opacity: 0.9; }
   100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
 }
-.chalk { animation: chalk 900ms var(--ease-out) both; }
+.chalk { animation: chalk calc(var(--dur-roll) * 2) var(--ease-out) both; }
 
 /* Referee lights coming on, one judge at a time. */
 @keyframes light-on {
@@ -329,4 +334,4 @@
   82% { opacity: 1; transform: none; }
   100% { opacity: 0; transform: translateY(-4px); }
 }
-.moment { animation: moment 2400ms var(--ease-out) both; }
+.moment { animation: moment var(--dur-linger) var(--ease-out) both; }

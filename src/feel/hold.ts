@@ -45,11 +45,20 @@ export function useHoldRepeat(action: () => boolean | void) {
       }, HOLD_DELAY)
     },
     onPointerUp: stop,
-    onPointerLeave: stop,
-    onPointerCancel: stop,
+    // Slid off or interrupted: no click is coming to end the hold, so end it here,
+    // or the next keyboard press would be swallowed as the hold's closing click.
+    onPointerLeave: () => {
+      stop()
+      held.current = false
+    },
+    onPointerCancel: () => {
+      stop()
+      held.current = false
+    },
     onClick: (e: MouseEvent<HTMLElement>) => {
       // The hold already did the work; the click that ends it is not one more step.
-      if (held.current) {
+      // A keyboard click (detail 0) is never the end of a hold.
+      if (held.current && e.detail !== 0) {
         held.current = false
         e.preventDefault()
         return

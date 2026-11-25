@@ -136,19 +136,20 @@ export function Sheet({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeRef.current()
       if (e.key === 'Tab' && panel.current) {
-        const nodes = panel.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
-        )
+        const focusable = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+        // A toast's Undo stays in reach while a sheet is open — it's often the sheet's own action being undone.
+        const nodes = [
+          ...panel.current.querySelectorAll<HTMLElement>(focusable),
+          ...document.querySelectorAll<HTMLElement>('[data-toast] button:not([disabled])'),
+        ]
         if (nodes.length === 0) return
-        const first = nodes[0]
-        const last = nodes[nodes.length - 1]
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
+        // Walk the list ourselves rather than wrapping only at the ends: the
+        // toast sits elsewhere in the page, and focus that has strayed out of
+        // the panel must still come back into it.
+        e.preventDefault()
+        const at = nodes.indexOf(document.activeElement as HTMLElement)
+        const next = at === -1 ? (e.shiftKey ? nodes.length - 1 : 0) : (at + (e.shiftKey ? -1 : 1) + nodes.length) % nodes.length
+        nodes[next].focus()
       }
     }
     document.addEventListener('keydown', onKey)

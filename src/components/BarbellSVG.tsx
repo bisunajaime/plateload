@@ -13,7 +13,7 @@ import { diffStack, enterDelays, stackKey } from '../lib/stack'
 import { CollarProfile, PlateDefs, PlateProfile } from './PlateSVG'
 
 /** How long plates coming off get before new ones start going on. */
-const CLEAR_MS = 110
+const CLEAR_MS = stagger.plate * 2
 /** The moment in a plate's travel when it hits the stack — where the spring first reaches home. */
 const SEAT_AT = Math.round(duration.settle * 0.45)
 
@@ -107,31 +107,38 @@ export function BarbellSVG({
     if (respond && exiting.length) feedback('unseat')
     if (!entering.length) return
     let last = 0
-    entering.forEach((inst, i) => {
+    // The next change cancels whatever of this one hasn't landed yet: a plate
+    // replaced mid-flight never thunks.
+    const pending = entering.map((inst, i) => {
       const at = (delays[i] ?? 0) + SEAT_AT
       last = Math.max(last, at)
-      if (respond) feedback('seat', { delay: at, size: Math.min(1, inst.plate.thicknessMm / 70) })
+      return respond ? feedback('seat', { delay: at, size: Math.min(1, inst.plate.thicknessMm / 70) }) : () => {}
     })
-    if (!animate) return
-    const a = rig.current?.animate(
-      [{ transform: 'translateY(0)' }, { transform: 'translateY(7px)' }, { transform: 'translateY(-2px)' }, { transform: 'translateY(0)' }],
-      { duration: 300, delay: last, easing: ease.out },
-    )
-    return () => a?.cancel()
+    const dip = animate
+      ? rig.current?.animate(
+          [{ transform: 'translateY(0)' }, { transform: 'translateY(7px)' }, { transform: 'translateY(-2px)' }, { transform: 'translateY(0)' }],
+          { duration: duration.base, delay: last, easing: ease.out },
+        )
+      : undefined
+    return () => {
+      pending.forEach((cancel) => cancel())
+      dip?.cancel()
+    }
   }, [change, respond, animate])
 
-  // A weight the plates can't make: the empty sleeve shakes its head.
-  const settled = useRef(false)
+  // A weight the plates can't make: the empty sleeve shakes its head. Only
+  // when the weight actually changes to it — not on first paint (a page that
+  // opens on an impossible weight just shows it), and not on a remount.
+  const shownLoad = useRef(loadId)
   useEffect(() => {
-    // Not on first paint: a page that opens on an impossible weight just shows it.
-    const first = !settled.current
-    settled.current = true
-    if (first || !unloadable || loadId === undefined) return
+    if (loadId === shownLoad.current) return
+    shownLoad.current = loadId
+    if (!unloadable || loadId === undefined) return
     if (respond) feedback('cantLoad')
     if (!animate) return
     const a = rig.current?.animate(
       [0, -10, 9, -6, 4, -2, 0].map((x) => ({ transform: `translateX(${x}px)` })),
-      { duration: 380, delay: 60, easing: 'ease-out' },
+      { duration: duration.settle, easing: ease.out },
     )
     return () => a?.cancel()
   }, [unloadable, loadId, respond, animate])
@@ -231,7 +238,7 @@ export function BarbellSVG({
         <g key={side} transform={side === -1 ? `translate(${L} 0) scale(-1 1)` : undefined}>
           {sleeveState.leaving.map(({ inst, gen, order }) => (
             <Slot key={`off-${gen}-${inst.index}-${inst.plate.id}`} x={inst.x} animate={animate}>
-              <g className="plate-out" style={{ animationDelay: `${order * 30}ms` }}>
+              <g className="plate-out" style={{ animationDelay: `${order * stagger.plate}ms` }}>
                 <PlateProfile plate={inst.plate} x={0} uid={uid} detail="full" />
               </g>
             </Slot>
@@ -376,6 +383,8 @@ function useSleeve(instances: Instance[], animate: boolean) {
     gen: 0,
     delays: enterDelays(diffStack([], keys), stagger.plate, 0),
     leaving: [] as Leaving[],
+    /** Plates still waiting out their delay — not yet visibly on the bar. */
+    waiting: new Set<string>(),
     change: null as SleeveChange | null,
   }))
 
@@ -386,14 +395,19 @@ function useSleeve(instances: Instance[], animate: boolean) {
     const delays = enterDelays(diff, stagger.plate, CLEAR_MS)
     const gen = state.gen + 1
     const byKey = new Map(state.instances.map((i) => [stackKey(i.index, i.plate.id), i]))
-    const exiting = diff.exiting.map((k) => byKey.get(k)!).filter(Boolean)
+    // A plate that never got moving has nothing to take off: no ghost for it.
+    const exiting = diff.exiting.filter((k) => !state.waiting.has(k)).map((k) => byKey.get(k)!).filter(Boolean)
     const entering = instances.filter((i) => delays.has(stackKey(i.index, i.plate.id)))
+    const waiting = new Set([...diff.staying.filter((k) => state.waiting.has(k)), ...[...delays].filter(([, d]) => d > 0).map(([k]) => k)])
     setState({
       sig,
       instances,
       gen,
       delays,
-      leaving: animate ? [...state.leaving, ...exiting.map((inst, order) => ({ inst, gen, order }))] : [],
+      // Only the last couple of changes' leavers are still on screen; a held
+      // stepper must not pile up hundreds of departing plates.
+      leaving: animate ? [...state.leaving.filter((l) => l.gen >= gen - 1), ...exiting.map((inst, order) => ({ inst, gen, order }))] : [],
+      waiting,
       change: {
         entering,
         delays: entering.map((i) => delays.get(stackKey(i.index, i.plate.id)) ?? 0),
@@ -402,18 +416,30 @@ function useSleeve(instances: Instance[], animate: boolean) {
     })
   }
 
-  // Once the latest leavers are gone, drop every leaver up to now. A newer
-  // change restarts the clock, so a plate is never cut off mid-exit.
-  const anyLeaving = state.leaving.length > 0
+  // Each change clears its own leavers once they're off, on its own clock —
+  // a newer change never postpones an older one's cleanup.
+  const timers = useRef(new Set<number>())
   useEffect(() => {
-    if (!anyLeaving) return
-    const gen = state.gen
-    const t = window.setTimeout(
-      () => setState((s) => ({ ...s, leaving: s.leaving.filter((l) => l.gen > gen) })),
-      duration.base + 120,
-    )
-    return () => window.clearTimeout(t)
-  }, [state.gen, anyLeaving])
+    const live = timers.current
+    return () => live.forEach((t) => window.clearTimeout(t))
+  }, [])
+  const { gen } = state
+  const lastStart = Math.max(0, ...state.delays.values())
+  const anyWaiting = state.waiting.size > 0
+  useEffect(() => {
+    const live = timers.current
+    const gone = window.setTimeout(() => {
+      live.delete(gone)
+      setState((s) => (s.leaving.some((l) => l.gen === gen) ? { ...s, leaving: s.leaving.filter((l) => l.gen !== gen) } : s))
+    }, duration.settle)
+    live.add(gone)
+    if (!anyWaiting) return
+    const started = window.setTimeout(() => {
+      live.delete(started)
+      setState((s) => (s.gen === gen ? { ...s, waiting: new Set<string>() } : s))
+    }, lastStart)
+    live.add(started)
+  }, [gen, lastStart, anyWaiting])
 
   const delayOf = (inst: Instance) => state.delays.get(stackKey(inst.index, inst.plate.id)) ?? 0
   return { leaving: state.leaving, change: state.change, delayOf }

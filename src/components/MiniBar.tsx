@@ -87,7 +87,7 @@ export function MiniBar({
   const snapUntil = useRef(0)
   const placed = useRef(false)
   const [viewport, setViewport] = useState(() =>
-    typeof window === 'undefined' ? { w: 400, h: 800 } : { w: window.innerWidth, h: window.innerHeight },
+    typeof window === 'undefined' ? { w: 400, h: 800 } : { w: document.documentElement.clientWidth, h: window.innerHeight },
   )
   const [card, setCard] = useState({ w: 150, h: 120 })
 
@@ -107,7 +107,7 @@ export function MiniBar({
 
   useEffect(() => {
     const measure = () => {
-      setViewport({ w: window.innerWidth, h: window.innerHeight })
+      setViewport({ w: document.documentElement.clientWidth, h: window.innerHeight })
       if (ref.current) setCard({ w: ref.current.offsetWidth, h: ref.current.offsetHeight })
     }
     measure()
@@ -156,7 +156,7 @@ export function MiniBar({
   const move = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const el = ref.current
     if (!dragging.current || !el) return
-    const x = clamp(e.clientX - grab.current.dx, MARGIN, window.innerWidth - el.offsetWidth - MARGIN)
+    const x = clamp(e.clientX - grab.current.dx, MARGIN, document.documentElement.clientWidth - el.offsetWidth - MARGIN)
     const y = clamp(e.clientY - grab.current.dy, TOP_LIMIT, window.innerHeight - el.offsetHeight - BOTTOM_LIMIT)
     if (!moved.current && Math.abs(x - at.current.x) + Math.abs(y - at.current.y) <= DRAG_SLOP) return
     if (!moved.current) {
@@ -183,8 +183,8 @@ export function MiniBar({
     }
     // Snap to whichever edge the card's middle ended up nearest — springing
     // there on its own, then telling the app where it now lives.
-    const side: PreviewPos['side'] = at.current.x + el.offsetWidth / 2 < window.innerWidth / 2 ? 'left' : 'right'
-    const x = side === 'left' ? MARGIN : Math.max(MARGIN, window.innerWidth - el.offsetWidth - MARGIN)
+    const side: PreviewPos['side'] = at.current.x + el.offsetWidth / 2 < document.documentElement.clientWidth / 2 ? 'left' : 'right'
+    const x = side === 'left' ? MARGIN : Math.max(MARGIN, document.documentElement.clientWidth - el.offsetWidth - MARGIN)
     const y = at.current.y
     if (still) {
       el.style.transition = 'none'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useReducedMotion } from '../feel'
+import { duration, useReducedMotion } from '../feel'
 
 export interface Moment {
   id: number
@@ -25,7 +25,7 @@ export function Celebration({ moment }: { moment: Moment | null }) {
   const [gone, setGone] = useState<number | null>(null)
   useEffect(() => {
     if (!moment) return
-    const t = window.setTimeout(() => setGone(moment.id), 2400)
+    const t = window.setTimeout(() => setGone(moment.id), duration.linger)
     return () => window.clearTimeout(t)
   }, [moment])
   if (!moment || gone === moment.id) return null
@@ -39,7 +39,7 @@ export function Celebration({ moment }: { moment: Moment | null }) {
               <span
                 key={i}
                 className="judge-light h-5 w-5 rounded-full border border-black/20 bg-white"
-                style={{ animationDelay: reduced ? undefined : `${150 + i * 160}ms` }}
+                style={{ animationDelay: reduced ? undefined : `${duration.quick + i * duration.quick}ms` }}
               />
             ))}
           </div>

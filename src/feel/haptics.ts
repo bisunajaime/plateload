@@ -68,5 +68,10 @@ export function haptic(kind: Haptic) {
   }
 }
 
-/** Whether this device can give any haptic at all — to decide whether to offer the setting. */
-export const hapticsSupported = () => canVibrate() || isIOS()
+/**
+ * Whether this device can give any haptic at all — to decide whether to offer
+ * the setting. Desktop Chrome has `navigator.vibrate` but nothing to vibrate,
+ * so it also needs a touch screen.
+ */
+export const hapticsSupported = () =>
+  (canVibrate() && typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) || isIOS()
