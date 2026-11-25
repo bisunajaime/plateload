@@ -206,6 +206,16 @@ export function MiniBar({
       ref={ref}
       type="button"
       onPointerDown={down}
+      // Dragging isn't the only way to move it: arrow keys park it on the other
+      // side or nudge it up and down.
+      onKeyDown={(e) => {
+        const nudge = { ArrowUp: -0.08, ArrowDown: 0.08 }[e.key]
+        const side = { ArrowLeft: 'left', ArrowRight: 'right' }[e.key] as PreviewPos['side'] | undefined
+        if (nudge === undefined && !side) return
+        e.preventDefault()
+        onMove({ side: side ?? pos.side, y: Math.min(0.85, Math.max(0, pos.y + (nudge ?? 0))) })
+        feedback('snap')
+      }}
       onPointerMove={move}
       onPointerUp={up}
       onPointerCancel={up}
@@ -220,7 +230,7 @@ export function MiniBar({
       }}
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
-      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Activate to go back to the barbell.`}
+      aria-label={`${loadable ? 'Currently loaded' : 'Can’t load'}: ${fmt(total)} ${unit}. Activate to go back to the barbell; arrow keys move it.`}
       style={{ left: 0, top: 0 }}
       className={`fixed z-40 w-[150px] cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-line bg-surface/95 opacity-0 shadow-xl backdrop-blur will-change-transform sm:w-[200px] ${
         visible ? '' : 'pointer-events-none'

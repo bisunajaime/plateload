@@ -56,17 +56,17 @@ Typical solves take well under a millisecond; there is a test asserting < 50 ms 
 
 ### Ranking modes
 
-| Mode | Sorts by |
-|---|---|
-| **Recommended** | fits the sleeve → fewest plates → competition order → least change-plate clutter |
-| **Competition** | largest plates innermost (lexicographic maximum — the platform-standard stack) |
-| **Fewest** | plate count per side |
-| **Compact** | shortest stack, using official plate widths plus the collar |
-| **Use what I have** | spends the heaviest denominations first |
-| **All** | everything, plate count ascending |
+"Other ways to load it" shows the top three; the rest, and the ranking, are one tap away.
 
-Exactly one combination carries the **Competition** badge: the lexicographic maximum, i.e. the
-stack a platform loader would build.
+| Mode (as labelled) | Sorts by |
+|---|---|
+| **Recommended** | fits the sleeve → fewest plates → competition order → fewest small plates |
+| **Meet order** (`competition`) | largest plates innermost (lexicographic maximum — the platform-standard stack) |
+| **Fewest plates** (`fewest`) | plate count per side |
+| **Shortest stack** (`compact`) | shortest stack, using official plate widths plus the collar |
+
+Each row says why in plain words ("Fewest plates", "Biggest plates inside — how a meet loads it",
+"Too wide for the sleeve"); `src/components/ways/reasons.ts` keeps jargon out, under test.
 
 ### When nothing fits
 
@@ -82,10 +82,14 @@ Counts are **whole-gym counts**: how many of that plate exist in the building. B
 is symmetric, the engine uses `floor(count / 2)` per side. Three 25s therefore give you one 25 a
 side, not one and a half.
 
-Open **Setup** (the gear) to edit counts, pick a preset, choose the bar and collars, and flip
-the **change plates** switch. Presets ship for: Eleiko competition platform, Eleiko training
-hall, Eleiko lb set, Metcon coloured gym (lb), Metcon black gym (kg), Metcon bumpers only (kg
-and lb), and sparse home gyms.
+Open the **Gym** tab to edit counts, pick a preset, choose the bar and collars, and flip the
+**small plates** (change plates) switch. Presets ship for: Eleiko competition platform, Eleiko
+training hall, Eleiko bumpers only and home gym (kg), Eleiko lb set, Metcon coloured gym (lb),
+Metcon black gym (kg), Metcon bumpers only (kg and lb), and sparse home gyms. Applying one can be
+undone.
+
+Collars default to what a gym actually uses: Metcon's Fast Clip, or a spring clip (0 kg) on an
+Eleiko bar. IWF competition collars (2.5 kg each) are a choice in Gym → Collars.
 
 Plate ids are stable across skins (`metcon-lb-45` is the same plate whether you view the black
 or the coloured line), so switching styles never resets your inventory. Ids *are* unit-scoped,
@@ -196,67 +200,70 @@ stack overruns the loadable sleeve (415 mm on a men's bar). Metcon 25 kg + 20 kg
 
 ## Features
 
-- Huge target control with stepper, quick chips and a gym-friendly keypad
-- Live breakdown: `Bar 20 + collars 5 + plates 75 = 100 kg`
-- Hero SVG barbell: knurling, marking rings, collars, mirrored plates, ground shadow,
-  plates sliding on with a stagger (respects `prefers-reduced-motion`)
-- Sleeve close-up, plate labels and a running total
-- A floating load preview when the bar is off screen: drag it anywhere, it snaps to the nearest
-  edge like AssistiveTouch and remembers where you left it; tap it to jump back to the bar
-- Combination cards with a sleeve thumbnail, plate list, count, capacity bar and badges
-- Warm-up generator, % of 1RM table, next-jump and next-competition-increment chips
-- Favourites and recents in their own sections. The star always saves, so two lifts can share a
-  weight (clean 100 kg, squat 100 kg) and be told apart by name; removal is an explicit × on the
-  favourite itself. Both lists carry their unit, and tapping an entry from the other unit
-  switches brand with it — tap a 225 lb recent while in Eleiko and you land in Metcon at 225 lb,
-  no conversion.
-- Copy-summary and a kg ↔ lb convert view
-- Gym mode (bigger type, higher contrast, less chrome — on by default on a small dark screen)
-- Light and dark themes, both designed; theme follows the system until you override it
+PlateLoad is four places, under a tab bar on a phone (the load pinned beside the others on a desktop):
 
-### URL parameters
+- **Load** — the weight as a scoreboard (tap the ✎ to type it; a physical keyboard works in the
+  keypad too), the plates each side as big pills, the drawn bar (tap it for whole bar / close-up),
+  − / + that show where they land and repeat when held, ±5/10/25 (or ±2.5/5/10 kg) jumps, Save and
+  Share, a saved-and-recent strip, and "Other ways to load it". A weight the plates can't make
+  says why ("your plates go up in 5 lb steps") and offers the nearest ones.
+- **Warm-up** — a ramp to your working weight or a table of percentages of your max; every row
+  shows its own plates, and a pinned summary keeps what's on the bar in view.
+- **Saved** — saved weights grouped by lift (update, rename, delete — all undoable) and recent ones.
+  A weight saved in the other unit switches brand with it, with Undo.
+- **Gym** — your plates first (presets, counts, small plates on/off), then the bar and collars,
+  then display, sounds and vibration, and erase-everything (press and hold).
 
-Loads are shareable: `/?w=225&u=lb&brand=metcon&bar=us-45&collars=1`
+Around them:
 
-| Param | Meaning |
-|---|---|
-| `w` | target weight |
-| `u` | `kg` \| `lb` — implies the brand when `brand` is absent |
-| `brand` | `eleiko` \| `metcon` |
-| `bar` | bar id (or a number for a custom bar) |
-| `collars` | `1` \| `0` |
-| `change` | `0` to start bumpers-only |
-| `sleeve` | `1` to open in the sleeve close-up |
+- **Feel:** plates slide on, glide and come off; the bar dips as the last one seats; the number rolls
+  like a scoreboard. Motion tokens live in `src/index.css` and `src/feel/motion.ts` (a test keeps
+  them in step); sound (synthesised, **off by default**) and haptics go through `src/feel`.
+- **Forgiveness:** brand switches, presets, deletes and the world-record easter egg apply at once
+  with Undo (⌘Z / Ctrl+Z works too) — and Undo refuses if things have changed since.
+- **Moments:** two, three, four plates get a caption and some chalk. Hold the logo for a surprise.
+- Gym mode (bigger type, stronger text); light and dark themes that follow the system until you
+  choose; works offline once loaded, and says so.
 
----
 
 ## Architecture
 
 ```
 src/
   data/plates.ts          all plate, bar, collar and preset definitions
-  lib/combinations.ts     the engine — pure, integer maths, unit-tested
-  lib/settings.ts         settings shape, hydration, loadout resolution
-  lib/warmup.ts           ramps, % of 1RM, next jump
-  lib/format.ts           units, conversion, formatting
+  lib/                    pure, unit-tested: combinations (the engine), settings, warmup,
+                          stack (plate enter/exit diff), milestones, format
+  feel/                   motion tokens, reduced motion, haptics, sound, feedback(moment), hold-to-repeat
+  app/useAppModel.ts      app state and every action; screens read it through useApp()
+  screens/                Load, Other ways, Saved strip, Warm-up, Saved, Gym
   components/
-    BarbellSVG.tsx        hero bar + sleeve thumbnail
-    PlateSVG.tsx          Eleiko / Metcon / steel plate profiles and collars
-    WeightInput.tsx  ComboList.tsx  ComboCard.tsx  EmptyState.tsx
-    InventoryEditor.tsx   inventory + the Setup sheet
-    WarmupPanel.tsx  Header.tsx  ThemeToggle.tsx  ui.tsx
-  hooks/useSettings.ts    localStorage, URL sync, theme, gym mode
-  App.tsx
+    kit/                  Button, Chip, Choice, Switch, Field, Stepper, PlatePill, Section, icons
+    shell/                tab bar, plates-and-units sheet, first-run welcome
+    load/ ways/ saved/    screen parts
+    BarbellSVG.tsx PlateSVG.tsx   the drawing (shared with the landing page)
+    ui.tsx                Sheet (animated, drag to dismiss)
+  landing/                the landing page at /
+  App.tsx                 the shell: header, tabs / two-pane layout, toasts
 ```
 
-TypeScript strict throughout. Tailwind for layout, CSS variables for theming (`class="dark"`).
+TypeScript strict throughout. Tailwind for layout; colours, motion and type come from tokens
+(`src/index.css`, `tailwind.config.js`).
+
 
 ## Accessibility
 
-Every control is labelled; the sheet traps focus, opens on its first field and closes on
-Escape; results announce politely; focus rings are visible;
-touch targets are at least 44 px; animation is disabled under `prefers-reduced-motion`; and the
-barbell exposes a text description of the current load.
+- Contrast: text meets WCAG AA in both themes; the edges of controls are 3:1 or better; black
+  and white plates carry an edge so they never vanish against the page.
+- Every control has a name; icon-only buttons say what they do. Targets are at least 44 px.
+- Keyboard: everything works from the keyboard, including the keypad, the radio groups (arrow
+  keys), hold-to-repeat steppers (ordinary presses), erase-everything (press twice) and moving the
+  floating preview (arrow keys). Focus is visible, trapped in sheets, and never dropped to the page.
+- Screen readers: one h1 and a heading per section; the load is announced once it settles (not on
+  every step), with the reason and the nearest weights when it can't be made; refused or corrected
+  input is explained in words.
+- Reduced motion: movement becomes a fade or an instant change. Sound is off by default, follows
+  the silent switch, and nothing is ever said only by sound or vibration.
+
 
 ## Deviations from the brief, stated plainly
 
